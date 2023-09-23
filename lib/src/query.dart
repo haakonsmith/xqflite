@@ -71,3 +71,8 @@ final class QueryBuilder {
 
   Query build() => Query(whereClauses, values);
 }
+//
+// final class JoinQuery extends PartialQuery {
+//
+//   const JoinQuery(super.whereClauses, this.values);
+// }

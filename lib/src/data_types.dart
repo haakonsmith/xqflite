@@ -1,3 +1,15 @@
-enum DataAffinity { text, numeric, integer, real, blob }
+enum DataAffinity { text, numeric, integer, real, blob, json }
 
-enum DataType { integer, text, json, date, dateTime, real }
+enum DataType {
+  integer(DataAffinity.integer),
+  text(DataAffinity.text),
+  json(DataAffinity.json),
+  date(DataAffinity.numeric),
+  dateTime(DataAffinity.numeric),
+  boolean(DataAffinity.numeric),
+  real(DataAffinity.real);
+
+  final DataAffinity affinity;
+
+  const DataType(this.affinity);
+}

@@ -65,6 +65,12 @@ extension Validation on List<Column> {
       if (value == null && !nullable) return NullableError(keyName: column.name, column: column);
 
       switch (dataType) {
+        case DataType.boolean:
+          if (value is! bool?) return InvalidTypeError(column.name, expected: bool, actual: value.runtimeType);
+          break;
+        case DataType.real:
+          if (value is! double?) return InvalidTypeError(column.name, expected: double, actual: value.runtimeType);
+          break;
         case DataType.integer:
           if (value is! int?) return InvalidTypeError(column.name, expected: int, actual: value.runtimeType);
           break;
@@ -75,7 +81,8 @@ extension Validation on List<Column> {
           if (value is! Map?) return InvalidTypeError(column.name, expected: Map, actual: value.runtimeType);
           break;
         case DataType.dateTime:
-          if (value is! DateTime?) return InvalidTypeError(column.name, expected: DateTime, actual: value.runtimeType);
+          // if (value is! DateTime?) return InvalidTypeError(column.name, expected: DateTime, actual: value.runtimeType);
+          if (value is! int?) return InvalidTypeError(column.name, expected: int, actual: value.runtimeType);
           break;
         case DataType.date:
           if (value is! DateTime?) return InvalidTypeError(column.name, expected: DateTime, actual: value.runtimeType);

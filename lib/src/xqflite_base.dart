@@ -37,6 +37,7 @@ class XqfliteDatabase {
   Future<void> open(
     Schema schema, {
     String dbPath = 'default.db',
+    bool relativeToSqflitePath = true,
     List<Migration> migrations = const [],
     bool nukeDb = false,
   }) {
@@ -50,21 +51,27 @@ class XqfliteDatabase {
       this.schema.tables[metaTableName] = Table(columns: [Column.integer('current_version')], name: metaTableName);
 
       tables = schema.tables.map((key, table) => MapEntry(key, table.toDbTable(this)));
-      _open(dbPath, nukeDb).whenComplete(() => _initialisationCompleter!.complete());
+      _open(
+        dbPath,
+        nukeDb: nukeDb,
+        relativeToSqflitePath: relativeToSqflitePath,
+      ).whenComplete(() => _initialisationCompleter!.complete());
     }
 
     return _initialisationCompleter!.future;
   }
 
-  Future<void> _open(String dbPath, [bool nukeDb = false]) async {
+  Future<void> _open(
+    String dbPath, {
+    bool nukeDb = false,
+    bool relativeToSqflitePath = false,
+  }) async {
     final databasesPath = await sql.getDatabasesPath();
 
-    final dbFile = File(dbPath);
-
-    if (nukeDb && dbFile.existsSync()) await dbFile.delete();
-
-    if (dbPath.startsWith('./')) {
+    if (!relativeToSqflitePath) {
+      if (nukeDb) await sql.deleteDatabase(dbPath);
       _db = await sql.openDatabase(dbPath);
+      print(_db!.path);
     } else {
       _db = await sql.openDatabase('$databasesPath/$dbPath');
     }
@@ -149,7 +156,7 @@ class XqfliteDatabase {
   Stream<List<Map<String, Object?>>> watchQuery(Table table, Query query) async* {
     yield await this.query(table, query);
 
-    await for (final table in _tableUpdates.stream.where((event) => event.name == table.name)) {
+    await for (final _ in _tableUpdates.stream.where((event) => event.name == table.name)) {
       yield await this.query(table, query);
     }
   }

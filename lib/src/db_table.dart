@@ -7,6 +7,8 @@ class DbTable {
 
   const DbTable(this.database, this.table);
 
+  DbTable innerJoin(DbTable joinee, Query on) => DbTable(database, table.innerJoin(joinee.table, on));
+  DbTable groupBy(List<String> groupProperties) => DbTable(database, table.groupBy(groupProperties));
   DbTableWithConverter<T> withConverter<T>(Converter<T> converter) => DbTableWithConverter(this, converter);
 
   Future<List<RawData>> query(Query query) async {
@@ -48,6 +50,9 @@ final class DbTableWithConverter<T> {
 
   const DbTableWithConverter(this.table, this.converter);
 
+  DbTable innerJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.innerJoin(joinee.table, on);
+  String get tableName => table.table.name;
+
   T fromDb(RawData data) {
     try {
       return converter.fromDb(data);
@@ -65,6 +70,7 @@ final class DbTableWithConverter<T> {
   }
 
   Stream<List<T>> watch(Query query) {
+    print(table);
     return table.watch(query).map((e) => e.map((l) => fromDb(l)).toList());
   }
 

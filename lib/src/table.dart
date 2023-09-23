@@ -52,10 +52,12 @@ class Table {
   final String name;
   final List<Column> columns;
   final PrimaryKey primaryKey;
+  final List<String> groupProperties;
 
   Table({
     required this.columns,
     required this.name,
+    this.groupProperties = const [],
   }) : primaryKey = columns.whereType<PrimaryKeyColumn>().firstOrNull?.toKey() ?? RowIdKey() {
     switch (primaryKey) {
       case SingleColumnKey primaryKey:
@@ -76,6 +78,14 @@ class Table {
   bool get hasReferences => columns.any((column) => column is ReferenceColumn);
 
   DbTable toDbTable(XqfliteDatabase database) => DbTable(database, this);
+  InnerJoinTable innerJoin(Table joinee, Query on) => InnerJoinTable(
+        columns: columns,
+        on: on,
+        joinee: joinee,
+        name: name,
+      );
+
+  Table groupBy(List<String> groupProperties) => Table(columns: columns, name: name, groupProperties: groupProperties);
 
   String toSql() {
     return '''
@@ -118,5 +128,32 @@ ${columns.map((e) => '        ${e.toSql()}').join(",\n")}
     }
 
     return buffer.toString();
+  }
+}
+
+class InnerJoinTable extends Table {
+  InnerJoinTable({
+    required super.columns,
+    required super.name,
+    required this.on,
+    required this.joinee,
+  });
+
+  final Query on;
+  final Table joinee;
+
+  @override
+  String queryString(Query query) {
+    final buffer = StringBuffer('SELECT *\nFROM $name ');
+
+    buffer.writeln("INNER JOIN ${joinee.name} ON ${on.whereString()}");
+
+    if (query.whereClauses.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln("WHERE");
+      buffer.writeln(query.whereString());
+    }
+
+    return buffer.toString().trim();
   }
 }
