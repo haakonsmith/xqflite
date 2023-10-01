@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/src/column.dart';
 import 'package:sqflite/sqflite.dart' as sql;
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' show databaseFactory;
 import 'package:xqflite/xqflite.dart';
 
 typedef Migration = Future<void> Function(XqfliteDatabase db, int version);
@@ -18,7 +18,18 @@ class XqfliteSqlBuilder extends StatementBuilder {
   }
 }
 
-class XqfliteDatabase {
+abstract interface class QueryExecutor {
+  Future<int> update(Table table, Map<String, Object?> values, Query query);
+  Future<int> delete(Table table, Query query);
+  Future<int> insert(Table table, Map<String, Object?> values);
+
+  Future<List<Map<String, Object?>>> query(Table table, Query query);
+  Stream<List<Map<String, Object?>>> watchQuery(Table table, Query query);
+
+  Future<void> batch(void Function(Batch batch) executor);
+}
+
+class XqfliteDatabase implements QueryExecutor {
   static const metaTableName = '__META_TABLE__';
 
   DbTable get metaTable => tables[metaTableName]!;
@@ -51,6 +62,7 @@ class XqfliteDatabase {
       this.schema.tables[metaTableName] = Table(columns: [Column.integer('current_version')], name: metaTableName);
 
       tables = schema.tables.map((key, table) => MapEntry(key, table.toDbTable(this)));
+
       _open(
         dbPath,
         nukeDb: nukeDb,
@@ -103,6 +115,13 @@ class XqfliteDatabase {
     }
   }
 
+  Future<void> addTable(Table table) async {
+    schema.tables[table.name] = table;
+    tables[table.name] = DbTable(this, table);
+
+    await execute(table.toSql());
+  }
+
   Future<void> close() {
     if (_db == null) throw Exception('DB is not open');
 
@@ -149,6 +168,10 @@ class XqfliteDatabase {
     return newIndex;
   }
 
+  Future<List<Map<String, Object?>>> rawQuery(String query) async {
+    return await _db!.rawQuery(query);
+  }
+
   Future<List<Map<String, Object?>>> query(Table table, Query query) async {
     return await _db!.rawQuery(table.queryString(query));
   }
@@ -166,5 +189,19 @@ class XqfliteDatabase {
     await future;
 
     yield* builder(this);
+  }
+
+  sql.Batch getRawBatch() => _db!.batch();
+
+  Future<void> batch(void Function(Batch batch) executor) async {
+    final batch = Batch(this);
+
+    executor(batch);
+
+    final result = await batch.commit();
+
+    for (final update in result.updates) {
+      _tableUpdates.add(update);
+    }
   }
 }

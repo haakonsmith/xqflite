@@ -11,6 +11,7 @@ final class TableBuilder {
 
   TableBuilder text(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.text, nullable: nullable));
   TableBuilder integer(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.integer, nullable: nullable));
+  TableBuilder bytes(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.bytes, nullable: nullable));
   TableBuilder real(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.real, nullable: nullable));
   TableBuilder boolean(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.boolean, nullable: nullable));
 

@@ -5,6 +5,7 @@ enum DataType {
   text(DataAffinity.text),
   json(DataAffinity.json),
   date(DataAffinity.numeric),
+  bytes(DataAffinity.numeric),
   dateTime(DataAffinity.numeric),
   boolean(DataAffinity.numeric),
   real(DataAffinity.real);

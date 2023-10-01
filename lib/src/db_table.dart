@@ -1,8 +1,9 @@
+import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/xqflite.dart';
 import 'package:xqflite/src/validation.dart';
 
 class DbTable {
-  final XqfliteDatabase database;
+  final QueryExecutor database;
   final Table table;
 
   const DbTable(this.database, this.table);
@@ -35,6 +36,12 @@ class DbTable {
     table.columns.validateMap(values)?.throwSelf();
 
     return await database.update(table, values, query);
+  }
+
+  Future<void> batch(void Function(BatchTable batch) executor) {
+    return database.batch((batch) {
+      executor(batch.withTable(table));
+    });
   }
 
   PartialQuery idQuery() => table.primaryKey.query;
@@ -86,9 +93,16 @@ final class DbTableWithConverter<T> {
     return table.update(converter.toDb(value), query);
   }
 
+  Future<void> batch(void Function(BatchTableWithConverter<T> batch) executor) {
+    return table.batch((batch) {
+      executor(batch.withConverter(converter));
+    });
+  }
+
   PartialQuery idQuery() => table.idQuery();
   Query single(int id) => table.single(id);
 
+  Future<T?> queryId(int id) => query(single(id)).then((value) => value.firstOrNull);
   Future<int> deleteId(int id) => delete(single(id));
   Future<int> updateId(T value, int id) => update(value, single(id));
 }
