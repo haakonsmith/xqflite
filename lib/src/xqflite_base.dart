@@ -171,7 +171,7 @@ class XqfliteDatabase implements QueryExecutor {
 
   @override
   Future<int> update(Table table, Map<String, Object?> values, Query query) async {
-    final newIndex = await _db!.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+    final newIndex = await _db!.update(table.name, values, where: query.whereStringOrNull());
 
     _tableUpdates.add(table);
 
