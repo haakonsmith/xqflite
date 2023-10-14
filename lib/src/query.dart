@@ -114,6 +114,9 @@ final class Query extends PartialQuery {
   static Query equals<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.equals)], [value.toString()]);
   static Query contains<T>(String column, T value) => Query([WhereClauseContains(column)], [value.toString()]);
 
+  /// Actually does what you'd expect, the above is for direct use
+  static Query containsList<T>(String column, List<T> value) => Query([WhereClauseContains(column)], [value.map((e) => e.toString()).join(',')]);
+
   static QueryBuilder builder() => QueryBuilder();
 
   List<String>? get valuesOrNull => isAll ? null : values;

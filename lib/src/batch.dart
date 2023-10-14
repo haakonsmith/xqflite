@@ -49,15 +49,15 @@ final class BatchTable {
 
   BatchTableWithConverter<T> withConverter<T>(Converter<T> converter) => BatchTableWithConverter(this, converter);
 
-  void insert(Map<String, Object?> values) async {
+  void insert(Map<String, Object?> values) {
     batch.insert(table, values);
   }
 
-  void delete(Query query) async {
+  void delete(Query query) {
     batch.delete(table, query);
   }
 
-  void update(Map<String, Object?> values, Query query) async {
+  void update(Map<String, Object?> values, Query query) {
     batch.update(table, values, query);
   }
 }
@@ -68,15 +68,29 @@ final class BatchTableWithConverter<T> {
 
   const BatchTableWithConverter(this.batch, this.converter);
 
-  void insert(T value) async {
+  void insert(T value) {
     batch.insert(converter.toDb(value));
   }
 
-  void delete(Query query) async {
+  void delete(Query query) {
     batch.delete(query);
   }
 
-  void update(T value, Query query) async {
+  void update(T value, Query query) {
     batch.update(converter.toDb(value), query);
+  }
+
+  void updateId(T value, int id) {
+    batch.update(
+        converter.toDb(value),
+        batch.table.primaryKey.query.withValues([
+          id.toString(),
+        ]));
+  }
+
+  void deleteId(int id) {
+    batch.delete(batch.table.primaryKey.query.withValues([
+      id.toString(),
+    ]));
   }
 }
