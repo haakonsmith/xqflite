@@ -88,10 +88,18 @@ class XqfliteDatabase implements QueryExecutor {
 
     if (!relativeToSqflitePath) {
       if (nukeDb) await sql.deleteDatabase(dbPath);
-      _db = await sql.openDatabase(dbPath);
+      if (Platform.isWindows) {
+        _db = await sqfliteFfi.openDatabase(dbPath);
+      } else {
+        _db = await sql.openDatabase(dbPath);
+      }
       print(_db!.path);
     } else {
-      _db = await sql.openDatabase('$databasesPath/$dbPath');
+      if (Platform.isWindows) {
+        _db = await sqfliteFfi.openDatabase('$databasesPath/$dbPath');
+      } else {
+        _db = await sql.openDatabase('$databasesPath/$dbPath');
+      }
     }
 
     for (final table in schema.tables.values) {
