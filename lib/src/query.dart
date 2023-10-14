@@ -100,7 +100,7 @@ final class PartialQuery {
 
   Query withValues(List<String> values) => Query(whereClauses, values);
 
-  String whereString() => whereClauses.map((e) => e.toSql()).join(',\n');
+  String whereString() => whereClauses.map((e) => e.toSql()).join('\n');
   String? whereStringOrNull() => isAll ? null : whereString();
 }
 
@@ -121,8 +121,7 @@ final class Query extends PartialQuery {
 
   List<String>? get valuesOrNull => isAll ? null : values;
 
-  @override
-  String whereString() => whereClauses.mapIndexed((i, e) => e.toSql().replaceFirst('?', values[i])).join('\n');
+  String whereStringWithValues() => whereClauses.mapIndexed((i, e) => e.toSql().replaceFirst('?', values[i])).join('\n');
 }
 
 final class QueryOperatorBuilder {

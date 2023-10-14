@@ -89,18 +89,10 @@ class XqfliteDatabase implements QueryExecutor {
 
     if (!relativeToSqflitePath) {
       if (nukeDb) await sql.deleteDatabase(dbPath);
-      if (Platform.isWindows) {
-        _db = await sqfliteFfi.openDatabase(dbPath);
-      } else {
-        _db = await sql.openDatabase(dbPath);
-      }
+      _db = await sql.openDatabase(dbPath);
       print(_db!.path);
     } else {
-      if (Platform.isWindows) {
-        _db = await sqfliteFfi.openDatabase('$databasesPath/$dbPath');
-      } else {
-        _db = await sql.openDatabase('$databasesPath/$dbPath');
-      }
+      _db = await sql.openDatabase('$databasesPath/$dbPath');
     }
 
     for (final table in schema.tables.values) {
@@ -158,6 +150,7 @@ class XqfliteDatabase implements QueryExecutor {
 
   Future<void> executeBuilder(StatementBuilder Function(StatementBuilder builder) builder) => execute(builder(StatementBuilder()).toSql());
 
+  @override
   Future<int> insert(Table table, Map<String, Object?> values) async {
     final newIndex = await _db!.insert(table.name, values);
 
@@ -167,6 +160,7 @@ class XqfliteDatabase implements QueryExecutor {
   }
 
   /// Returns number of rows affected
+  @override
   Future<int> delete(Table table, Query query) async {
     final newIndex = await _db!.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
@@ -175,6 +169,7 @@ class XqfliteDatabase implements QueryExecutor {
     return newIndex;
   }
 
+  @override
   Future<int> update(Table table, Map<String, Object?> values, Query query) async {
     final newIndex = await _db!.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
@@ -187,10 +182,13 @@ class XqfliteDatabase implements QueryExecutor {
     return await _db!.rawQuery(query);
   }
 
+  @override
   Future<List<Map<String, Object?>>> query(Table table, Query query) async {
-    return await _db!.rawQuery(table.queryString(query));
+    return await rawQuery(table.queryString(query));
+
   }
 
+  @override
   Stream<List<Map<String, Object?>>> watchQuery(Table table, Query query) async* {
     yield await this.query(table, query);
 
@@ -208,6 +206,7 @@ class XqfliteDatabase implements QueryExecutor {
 
   sql.Batch getRawBatch() => _db!.batch();
 
+  @override
   Future<void> batch(void Function(Batch batch) executor) async {
     final batch = Batch(this);
 

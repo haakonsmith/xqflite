@@ -77,7 +77,6 @@ final class DbTableWithConverter<T> {
   }
 
   Stream<List<T>> watch(Query query) {
-    print(table);
     return table.watch(query).map((e) => e.map((l) => fromDb(l)).toList());
   }
 

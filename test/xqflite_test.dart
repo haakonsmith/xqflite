@@ -119,8 +119,8 @@ void main() {
       expect(schema.tables['test']!.queryString(query), '''SELECT *
 FROM test
 WHERE
-test_col = 2,
-test_col = 2''');
+ test_col = ?
+ test_col = ?''');
     });
   });
 
@@ -139,7 +139,7 @@ test_col = 2''');
         '2'
       ]);
 
-      await Database.instance.open(schema);
+      await Database.instance.open(schema, nukeDb: true);
 
       await Database.instance.schema.tables['test']!.toDbTable(Database.instance).insert({
         'test_col': '2',
@@ -172,7 +172,7 @@ test_col = 2''');
 
       final schema = Schema([albums, artists]);
 
-      await Database.instance.open(schema);
+      await Database.instance.open(schema, dbPath: ':memory:');
 
       final newArtistId = await Database.instance.tables['artists']!.insert({
         'artist_name': 'Bill',
@@ -201,7 +201,7 @@ test_col = 2''');
 
       final schema = Schema([artistsTable]);
 
-      await Database.instance.open(schema);
+      await Database.instance.open(schema, dbPath: ':memory:');
 
       final artist = Artist(artistName: 'Phill');
       final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
@@ -214,6 +214,30 @@ test_col = 2''');
       await Database.instance.deleteDatabase();
 
       expect(result, [Artist(artistName: 'Phill', artistId: 1)]);
+    });
+
+    test('update', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .primaryKey('artist_id') //
+          .build();
+
+      final schema = Schema([artistsTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artist = Artist(artistName: 'Phill');
+      final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
+
+      final artistId = await artists.insert(artist);
+      await artists.updateId(Artist(artistName: "Brian", artistId: artistId), artistId);
+
+      final result = await artists.query(Query.all());
+
+      await Database.instance.close();
+      await Database.instance.deleteDatabase();
+
+      expect(result, [Artist(artistName: 'Brian', artistId: 1)]);
     });
   });
 }
