@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/src/column.dart';
 import 'package:sqflite/sqflite.dart' as sql;
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' show databaseFactory;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqfliteFfi;
 import 'package:xqflite/xqflite.dart';
 
 typedef Migration = Future<void> Function(XqfliteDatabase db, int version);
@@ -78,6 +79,11 @@ class XqfliteDatabase implements QueryExecutor {
     bool nukeDb = false,
     bool relativeToSqflitePath = false,
   }) async {
+    if (Platform.isWindows) {
+      sqfliteFfi.sqfliteFfiInit();
+      sqfliteFfi.databaseFactory = sqfliteFfi.databaseFactoryFfi;
+    }
+
     final databasesPath = await sql.getDatabasesPath();
 
     if (!relativeToSqflitePath) {
@@ -133,7 +139,7 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void> deleteDatabase() {
     if (_db?.isOpen == true) throw Exception('DB is open, please close first');
 
-    return databaseFactory.deleteDatabase(_db!.path);
+    return sqfliteFfi.databaseFactory.deleteDatabase(_db!.path);
   }
 
   Future<void> execute(String sql) async {
