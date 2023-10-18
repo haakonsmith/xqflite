@@ -90,24 +90,42 @@ final class WhereClauseContains implements WhereClause {
   }
 }
 
+enum OrderByDirection { asc, desc }
+
+final class OrderByClause {
+  const OrderByClause({
+    required this.columnName,
+    this.nullsLast = false,
+    this.direction = OrderByDirection.asc,
+  });
+
+  final String columnName;
+  final bool nullsLast;
+  final OrderByDirection direction;
+
+  String toSql() => '$columnName ${direction.name.toUpperCase()}${nullsLast ? ", NULLS LAST" : ""}';
+}
+
 /// A query without the values
 final class PartialQuery {
   final List<WhereClause> whereClauses;
+  final List<OrderByClause> orderByClauses;
 
   bool get isAll => whereClauses.isEmpty;
 
-  const PartialQuery(this.whereClauses);
+  const PartialQuery(this.whereClauses, [this.orderByClauses = const []]);
 
-  Query withValues(List<String> values) => Query(whereClauses, values);
+  Query withValues(List<String> values) => Query(whereClauses, values, orderByClauses);
 
-  String whereString() => whereClauses.map((e) => e.toSql()).join('\n');
+  String orderByString() => orderByClauses.isNotEmpty ? " ORDER BY ${orderByClauses.map((e) => e.toSql()).join('\n')}" : '';
+  String whereString() => whereClauses.map((e) => e.toSql()).join('\n') + orderByString();
   String? whereStringOrNull() => isAll ? null : whereString();
 }
 
 final class Query extends PartialQuery {
   final List<String> values;
 
-  const Query(super.whereClauses, this.values);
+  const Query(super.whereClauses, this.values, [super.orderByClauses = const []]);
   const Query.all()
       : values = const [],
         super(const []);
@@ -121,7 +139,7 @@ final class Query extends PartialQuery {
 
   List<String>? get valuesOrNull => isAll ? null : values;
 
-  String whereStringWithValues() => whereClauses.mapIndexed((i, e) => e.toSql().replaceFirst('?', values[i])).join('\n');
+  String whereStringWithValues() => whereClauses.mapIndexed((i, e) => e.toSql().replaceFirst('?', values[i])).join('\n') + orderByString();
 }
 
 final class QueryOperatorBuilder {
@@ -131,6 +149,8 @@ final class QueryOperatorBuilder {
 
   QueryBuilder and() => builder..operators.add(BooleanOperator.and);
   QueryBuilder or() => builder..operators.add(BooleanOperator.or);
+  QueryOperatorBuilder orderBy(String column, {OrderByDirection direction = OrderByDirection.asc, bool nullsLast = false}) =>
+      this..builder.orderBy(column, direction: direction, nullsLast: nullsLast);
 
   Query build() => builder.build();
 }
@@ -138,16 +158,20 @@ final class QueryOperatorBuilder {
 final class QueryBuilder {
   final List<BooleanOperator> operators;
   final List<WhereClause> whereClauses;
+  final List<OrderByClause> orderByClauses;
   final List<String> values;
 
   QueryBuilder()
-      : whereClauses = [],
+      : orderByClauses = [],
+        whereClauses = [],
         operators = [],
         values = [];
 
   QueryOperatorBuilder equals<T>(String column, T value) => QueryOperatorBuilder(this
     ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.equals))
     ..values.add(value.toString()));
+  QueryBuilder orderBy(String column, {OrderByDirection direction = OrderByDirection.asc, bool nullsLast = false}) =>
+      this..orderByClauses.add(OrderByClause(columnName: column, direction: direction, nullsLast: nullsLast));
 
   Query build() {
     for (var i = 0; i < whereClauses.length - 1; i++) {
@@ -156,11 +180,10 @@ final class QueryBuilder {
       whereClauses[i + 1] = whereClauses[i + 1].copyWith(operator: operators[i]);
     }
 
-    return Query(whereClauses, values);
+    return Query(
+      whereClauses,
+      values,
+      orderByClauses,
+    );
   }
 }
-//
-// final class JoinQuery extends PartialQuery {
-//
-//   const JoinQuery(super.whereClauses, this.values);
-// }
