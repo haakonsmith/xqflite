@@ -29,13 +29,17 @@ final class Batch {
   }
 
   void delete(Table table, Query query) async {
-    batch.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+    batch.delete(table.name, where: query.whereStringWithValues()
+    // , whereArgs: query.valuesOrNull
+    );
 
     _updates.add(table);
   }
 
   void update(Table table, Map<String, Object?> values, Query query) async {
-    batch.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+    batch.update(table.name, values, where: query.whereStringWithValues()
+    // , whereArgs: query.valuesOrNull
+    );
 
     _updates.add(table);
   }

@@ -90,6 +90,31 @@ final class WhereClauseContains implements WhereClause {
   }
 }
 
+final class WhereClauseIn implements WhereClause {
+  @override
+  final BooleanOperator operator;
+
+  @override
+  final String column;
+
+  const WhereClauseIn(this.column, {this.operator = BooleanOperator.inital});
+
+  @override
+  String toSql() => '${operator.sql} $column IN (?)';
+
+  @override
+  WhereClauseContains copyWith({
+    BooleanOperator? operator,
+    String? column,
+  }) {
+    return WhereClauseContains(
+      column ?? this.column,
+      operator: operator ?? this.operator,
+    );
+  }
+}
+
+
 enum OrderByDirection { asc, desc }
 
 final class OrderByClause {
@@ -133,13 +158,13 @@ final class Query extends PartialQuery {
   static Query contains<T>(String column, T value) => Query([WhereClauseContains(column)], [value.toString()]);
 
   /// Actually does what you'd expect, the above is for direct use
-  static Query containsList<T>(String column, List<T> value) => Query([WhereClauseContains(column)], [value.map((e) => e.toString()).join(',')]);
+  static Query containsList<T>(String column, List<T> value) => Query([WhereClauseIn(column)], [value.map((e) => e.toString()).join(',')]);
 
   static QueryBuilder builder() => QueryBuilder();
 
   List<String>? get valuesOrNull => isAll ? null : values;
 
-  String whereStringWithValues() => whereClauses.mapIndexed((i, e) => e.toSql().replaceFirst('?', values[i])).join('\n') + orderByString();
+  String whereStringWithValues() => whereClauses.mapIndexed((i, e) => e.toSql().replaceAll('?', values[i])).join('\n') + orderByString();
 }
 
 final class QueryOperatorBuilder {
