@@ -33,7 +33,7 @@ class DbTable {
   }
 
   Future<int> update(Map<String, Object?> values, Query query) async {
-    table.columns.validateMap(values)?.throwSelf();
+    table.columns.where((column) => values.values.contains(column.name)).toList().validateMap(values)?.throwSelf();
 
     return await database.update(table, values, query);
   }
