@@ -114,7 +114,6 @@ final class WhereClauseIn implements WhereClause {
   }
 }
 
-
 enum OrderByDirection { asc, desc }
 
 final class OrderByClause {
@@ -155,10 +154,17 @@ final class Query extends PartialQuery {
       : values = const [],
         super(const []);
   static Query equals<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.equals)], [value.toString()]);
+  static Query notEquals<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.notEquals)], [value.toString()]);
+
   static Query contains<T>(String column, T value) => Query([WhereClauseContains(column)], [value.toString()]);
 
   /// Actually does what you'd expect, the above is for direct use
   static Query containsList<T>(String column, List<T> value) => Query([WhereClauseIn(column)], [value.map((e) => e.toString()).join(',')]);
+
+  static Query greaterThan<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.greaterThan)], [value.toString()]);
+  static Query greaterThanOrEqual<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.greaterThanOrEqual)], [value.toString()]);
+  static Query lessThan<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.lessThan)], [value.toString()]);
+  static Query lessThanOrEqual<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.lessThanOrEqual)], [value.toString()]);
 
   static QueryBuilder builder() => QueryBuilder();
 
@@ -195,6 +201,27 @@ final class QueryBuilder {
   QueryOperatorBuilder equals<T>(String column, T value) => QueryOperatorBuilder(this
     ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.equals))
     ..values.add(value.toString()));
+
+  QueryOperatorBuilder notEquals<T>(String column, T value) => QueryOperatorBuilder(this
+    ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.notEquals))
+    ..values.add(value.toString()));
+
+  QueryOperatorBuilder greaterThan<T>(String column, T value) => QueryOperatorBuilder(this
+    ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.greaterThan))
+    ..values.add(value.toString()));
+
+  QueryOperatorBuilder greaterThanOrEqual<T>(String column, T value) => QueryOperatorBuilder(this
+    ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.greaterThanOrEqual))
+    ..values.add(value.toString()));
+
+  QueryOperatorBuilder lessThan<T>(String column, T value) => QueryOperatorBuilder(this
+    ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.lessThan))
+    ..values.add(value.toString()));
+
+  QueryOperatorBuilder lessThanOrEqual<T>(String column, T value) => QueryOperatorBuilder(this
+    ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.lessThanOrEqual))
+    ..values.add(value.toString()));
+
   QueryBuilder orderBy(String column, {OrderByDirection direction = OrderByDirection.asc, bool nullsLast = false}) =>
       this..orderByClauses.add(OrderByClause(columnName: column, direction: direction, nullsLast: nullsLast));
 
