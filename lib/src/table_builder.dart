@@ -19,5 +19,5 @@ final class TableBuilder {
   TableBuilder primaryKey(String name) => this..columns.add(PrimaryKeyColumn(name));
   TableBuilder reference(String name, Table table, {bool nullable = false}) => this..columns.add(ReferenceColumn(name, references: table, nullable: nullable));
 
-  Table build() => Table(name: name, columns: columns);
+  Table build() => Table(name: name, columns: columns, childJoins: []);
 }

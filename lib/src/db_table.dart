@@ -57,6 +57,9 @@ final class DbTableWithConverter<T> {
 
   const DbTableWithConverter(this.table, this.converter);
 
+  // DbTable leftJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.leftJoin(joinee.table, on);
+  // DbTable rightJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.rightJoin(joinee.table, on);
+  // DbTable fullOuterJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.fullOuterJoin(joinee.table, on);
   DbTable innerJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.innerJoin(joinee.table, on);
   String get tableName => table.table.name;
 

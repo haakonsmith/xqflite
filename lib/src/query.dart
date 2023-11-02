@@ -141,8 +141,8 @@ final class PartialQuery {
 
   Query withValues(List<String> values) => Query(whereClauses, values, orderByClauses);
 
-  String orderByString() => orderByClauses.isNotEmpty ? " ORDER BY ${orderByClauses.map((e) => e.toSql()).join('\n')}" : '';
-  String whereString() => whereClauses.map((e) => e.toSql()).join('\n') + orderByString();
+  String orderByString() => orderByClauses.isNotEmpty ? "${orderByClauses.map((e) => e.toSql()).join('\n')}" : '';
+  String whereString() => whereClauses.map((e) => e.toSql()).join('\n');
   String? whereStringOrNull() => isAll ? null : whereString();
 }
 
@@ -170,7 +170,7 @@ final class Query extends PartialQuery {
 
   List<String>? get valuesOrNull => isAll ? null : values;
 
-  String whereStringWithValues() => whereClauses.mapIndexed((i, e) => e.toSql().replaceAll('?', values[i])).join('\n') + orderByString();
+  String whereStringWithValues() => whereClauses.mapIndexed((i, e) => e.toSql().replaceAll('?', values[i])).join('\n');
 }
 
 final class QueryOperatorBuilder {

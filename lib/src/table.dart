@@ -48,15 +48,34 @@ final class SingleColumnKey extends PrimaryKey {
   PartialQuery get query => PartialQuery([WhereClauseEquals(column.name, EqualityOperator.equals)]);
 }
 
+sealed class Join {
+  final Query on;
+  final Table joinee;
+
+  const Join({required this.on, required this.joinee});
+
+  String toSql();
+}
+
+final class InnerJoin extends Join {
+  const InnerJoin({required super.on, required super.joinee});
+
+  @override
+  String toSql() => "INNER JOIN ${joinee.tableName} ON ${on.whereStringWithValues()}";
+}
+
 class Table {
   final String name;
   final List<Column> columns;
   final PrimaryKey primaryKey;
   final List<String> groupProperties;
+  final List<Join> childJoins;
 
   Table({
     required this.columns,
     required this.name,
+    // List<Join>? childJoins,
+    this.childJoins = const [],
     this.groupProperties = const [],
   }) : primaryKey = columns.whereType<PrimaryKeyColumn>().firstOrNull?.toKey() ?? RowIdKey() {
     switch (primaryKey) {
@@ -67,8 +86,8 @@ class Table {
     }
   }
 
-  factory Table.columns(String name, List<Column> columns) {
-    return Table(columns: columns, name: name);
+  factory Table.columns(String name, List<Column> columns, [List<Join> childJoins = const []]) {
+    return Table(columns: columns, name: name, childJoins: childJoins);
   }
 
   static TableBuilder builder(String name) {
@@ -78,14 +97,13 @@ class Table {
   bool get hasReferences => columns.any((column) => column is ReferenceColumn);
 
   DbTable toDbTable(XqfliteDatabase database) => DbTable(database, this);
-  InnerJoinTable innerJoin(Table joinee, Query on) => InnerJoinTable(
-        columns: columns,
-        on: on,
-        joinee: joinee,
-        name: name,
-      );
+  Table innerJoin<T extends Table>(T joinee, Query on) =>
+      Table(columns: columns, name: name, groupProperties: groupProperties, childJoins: [...childJoins, InnerJoin(on: on, joinee: joinee)]);
+  // FullOuterJoinTable fullOuterJoin(Table joinee, Query on) => FullOuterJoinTable(columns: columns, on: on, joinee: joinee, name: name);
+  // LeftJoinTable leftJoin(Table joinee, Query on) => LeftJoinTable(columns: columns, on: on, joinee: joinee, name: name);
+  // RightJoinTable rightJoin(Table joinee, Query on) => RightJoinTable(columns: columns, on: on, joinee: joinee, name: name);
 
-  Table groupBy(List<String> groupProperties) => Table(columns: columns, name: name, groupProperties: groupProperties);
+  Table groupBy(List<String> groupProperties) => Table(columns: columns, name: name, groupProperties: groupProperties, childJoins: childJoins);
 
   String toSql() {
     return '''
@@ -98,12 +116,22 @@ ${columns.map((e) => '        ${e.toSql()}').join(",\n")}
   String get tableName => name;
 
   String queryString(Query query) {
-    final buffer = StringBuffer('SELECT *\nFROM $tableName');
+    final buffer = StringBuffer('SELECT * FROM $tableName\n');
+
+    for (final join in childJoins) {
+      buffer.writeln(join.toSql());
+    }
 
     if (query.whereClauses.isNotEmpty) {
       buffer.writeln();
       buffer.writeln("WHERE");
       buffer.writeln(query.whereStringWithValues());
+    }
+
+    if (query.orderByClauses.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln("ORDER BY");
+      buffer.writeln(query.orderByString());
     }
 
     // if (hasReferences) {
@@ -130,33 +158,5 @@ ${columns.map((e) => '        ${e.toSql()}').join(",\n")}
     }
 
     return buffer.toString();
-  }
-}
-
-class InnerJoinTable extends Table {
-  InnerJoinTable({
-    required super.columns,
-    required super.name,
-    required this.on,
-    required this.joinee,
-  });
-
-  final Query on;
-  final Table joinee;
-
-  @override
-  String get tableName => "$name INNER JOIN ${joinee.name} ON ${on.whereStringWithValues()}";
-
-  @override
-  String queryString(Query query) {
-    final buffer = StringBuffer('SELECT *\nFROM $tableName ');
-
-    if (query.whereClauses.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln("WHERE");
-      buffer.writeln(query.whereStringWithValues());
-    }
-
-    return buffer.toString().trim();
   }
 }
