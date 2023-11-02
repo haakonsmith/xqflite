@@ -95,8 +95,10 @@ ${columns.map((e) => '        ${e.toSql()}').join(",\n")}
       ''';
   }
 
+  String get tableName => name;
+
   String queryString(Query query) {
-    final buffer = StringBuffer('SELECT *\nFROM $name');
+    final buffer = StringBuffer('SELECT *\nFROM $tableName');
 
     if (query.whereClauses.isNotEmpty) {
       buffer.writeln();
@@ -143,10 +145,11 @@ class InnerJoinTable extends Table {
   final Table joinee;
 
   @override
-  String queryString(Query query) {
-    final buffer = StringBuffer('SELECT *\nFROM $name ');
+  String get tableName => "$name INNER JOIN ${joinee.name} ON ${on.whereStringWithValues()}";
 
-    buffer.writeln("INNER JOIN ${joinee.name} ON ${on.whereStringWithValues()}");
+  @override
+  String queryString(Query query) {
+    final buffer = StringBuffer('SELECT *\nFROM $tableName ');
 
     if (query.whereClauses.isNotEmpty) {
       buffer.writeln();

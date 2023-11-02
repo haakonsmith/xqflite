@@ -119,12 +119,53 @@ void main() {
       expect(schema.tables['test']!.queryString(query), '''SELECT *
 FROM test
 WHERE
- test_col = ?
- test_col = ?''');
+ test_col = 2
+ test_col = 2''');
     });
   });
 
   group('actual db tests', () {
+    test('double inner join', () async {
+      final column = Column.text('test_col', nullable: true);
+      final column2 = Column.integer('test_col2');
+
+      final table = Table(columns: [column, column2], name: 'test');
+      final table1 = Table(columns: [column, column2], name: 'test1');
+      final table2 = Table(columns: [column, column2], name: 'test2');
+
+      final schema = Schema([table, table1, table2]);
+
+      await Database.instance.open(schema, dbPath: ":memory:");
+
+      await Database.instance.schema.tables['test']!.toDbTable(Database.instance).insert({
+        'test_col': '1',
+        'test_col2': 1,
+      });
+
+      await Database.instance.schema.tables['test1']!.toDbTable(Database.instance).insert({
+        'test_col': '1',
+        'test_col2': 1,
+      });
+
+      await Database.instance.schema.tables['test2']!.toDbTable(Database.instance).insert({
+        'test_col': '1',
+        'test_col2': 1,
+      });
+
+      final queryResult = await Database.instance.schema.tables['test']! //
+          .toDbTable(Database.instance)
+          .innerJoin(Database.instance.schema.tables['test1']!.toDbTable(Database.instance), Query.equals('test.test_col', '1'))
+          .innerJoin(Database.instance.schema.tables['test2']!.toDbTable(Database.instance), Query.equals('test.test_col', '1'))
+          .query(Query.all());
+
+      await Database.instance.close();
+      await Database.instance.deleteDatabase();
+
+      expect(queryResult, [
+        {'test_col': '1', 'test_col2': 1},
+      ]);
+    });
+
     test('query', () async {
       final column = Column.text('test_col', nullable: true);
       final column2 = Column.integer('test_col2');
@@ -139,7 +180,7 @@ WHERE
         '2'
       ]);
 
-      await Database.instance.open(schema, nukeDb: true);
+      await Database.instance.open(schema, dbPath: ':memory:');
 
       await Database.instance.schema.tables['test']!.toDbTable(Database.instance).insert({
         'test_col': '2',

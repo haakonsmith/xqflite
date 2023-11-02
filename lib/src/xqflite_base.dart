@@ -50,7 +50,6 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void> open(
     Schema schema, {
     String dbPath = 'default.db',
-    bool relativeToSqflitePath = true,
     List<Migration> migrations = const [],
     bool nukeDb = false,
   }) {
@@ -68,7 +67,6 @@ class XqfliteDatabase implements QueryExecutor {
       _open(
         dbPath,
         nukeDb: nukeDb,
-        relativeToSqflitePath: relativeToSqflitePath,
       ).whenComplete(() => _initialisationCompleter!.complete());
     }
 
@@ -78,22 +76,15 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void> _open(
     String dbPath, {
     bool nukeDb = false,
-    bool relativeToSqflitePath = false,
   }) async {
     if (Platform.isWindows && Platform.isLinux) {
       sql.sqfliteFfiInit();
     }
     sql.databaseFactory = sql.databaseFactoryFfi;
 
-    final databasesPath = await sql.getDatabasesPath();
-
-    if (!relativeToSqflitePath) {
-      if (nukeDb) await sql.deleteDatabase(dbPath);
-      _db = await sql.openDatabase(dbPath);
-      print(_db!.path);
-    } else {
-      _db = await sql.openDatabase('$databasesPath/$dbPath');
-    }
+    if (nukeDb) await sql.deleteDatabase(dbPath);
+    _db = await sql.openDatabase(dbPath);
+    print(_db!.path);
 
     for (final table in schema.tables.values) {
       print("executing:");
