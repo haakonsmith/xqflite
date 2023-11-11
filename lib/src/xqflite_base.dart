@@ -86,6 +86,8 @@ class XqfliteDatabase implements QueryExecutor {
     _db = await sql.openDatabase(dbPath);
     print(_db!.path);
 
+    await execute('PRAGMA foreign_keys = ${schema.foreignkeys ? "ON" : "OFF"}');
+
     for (final table in schema.tables.values) {
       print("executing:");
       print(table.toSql());

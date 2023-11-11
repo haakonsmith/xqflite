@@ -13,7 +13,8 @@ sealed class Column {
   static GenericColumn date(String name, {bool nullable = false}) => GenericColumn(name, DataType.date, nullable: nullable);
   static GenericColumn dateTime(String name, {bool nullable = false}) => GenericColumn(name, DataType.dateTime, nullable: nullable);
   static PrimaryKeyColumn primaryKey(String name) => PrimaryKeyColumn(name);
-  static ReferenceColumn reference(String name, Table table, {bool nullable = false}) => ReferenceColumn(name, references: table, nullable: nullable);
+  static ReferenceColumn reference(String name, Table table, {bool nullable = false, CascadeOperation? onUpdate, CascadeOperation? onDelete}) =>
+      ReferenceColumn(name, references: table, nullable: nullable, onDelete: onDelete, onUpdate: onUpdate);
 
   String toSql();
 }
@@ -48,14 +49,42 @@ final class TextColumn extends Column {
   String toSql() => '$name TEXT${defaultValue == null ? '' : ' DEFAULT "$defaultValue"'}${nullable ? '' : ' NOT NULL'}';
 }
 
+/// https://www.sqlite.org/foreignkeys.html
+enum CascadeOperation {
+  noAction("NO ACTION"),
+  restrict("RESTRICT"),
+  setNull("SET NULL"),
+  setDefault("SET DEFAULT"),
+  cascade("CASCADE");
+
+  final String sql;
+  const CascadeOperation(this.sql);
+}
+
 final class ReferenceColumn extends Column {
   final Table references;
   final bool nullable;
+  final CascadeOperation? onDelete;
+  final CascadeOperation? onUpdate;
 
-  const ReferenceColumn(super.name, {required this.references, this.nullable = false});
+  const ReferenceColumn(super.name, {required this.references, this.nullable = false, this.onUpdate, this.onDelete});
 
   @override
-  String toSql() => '$name INTEGER REFERENCES ${references.name} (${references.primaryKey.toSqlList()})';
+  String toSql() {
+    final buffer = StringBuffer('$name INTEGER, FOREIGN KEY ($name) REFERENCES ${references.name} (${references.primaryKey.toSqlList()})\n');
+
+    if (onDelete != null) {
+      buffer.write("ON DELETE ");
+      buffer.writeln(onDelete!.sql);
+    }
+
+    if (onUpdate != null) {
+      buffer.write("ON UPDATE ");
+      buffer.writeln(onUpdate!.sql);
+    }
+
+    return buffer.toString();
+  }
 }
 
 final class JsonColumn extends Column {

@@ -17,7 +17,8 @@ final class TableBuilder {
 
   TableBuilder dateTime(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.dateTime, nullable: nullable));
   TableBuilder primaryKey(String name) => this..columns.add(PrimaryKeyColumn(name));
-  TableBuilder reference(String name, Table table, {bool nullable = false}) => this..columns.add(ReferenceColumn(name, references: table, nullable: nullable));
+  TableBuilder reference(String name, Table table, {bool nullable = false, CascadeOperation? onUpdate, CascadeOperation? onDelete}) =>
+      this..columns.add(ReferenceColumn(name, references: table, nullable: nullable, onDelete: onDelete, onUpdate: onUpdate));
 
   Table build() => Table(name: name, columns: columns, childJoins: []);
 }

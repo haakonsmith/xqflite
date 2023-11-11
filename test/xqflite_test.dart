@@ -234,6 +234,45 @@ WHERE
       ]);
     });
 
+    test('cascade reference', () async {
+      final artists = Table.builder('artists') //
+          .text('artist_name')
+          .primaryKey('artist_id')
+          .build();
+
+      final albums = Table.builder('albums') //
+          .text('album_name')
+          .primaryKey('album_id')
+          .reference('artist_id', artists, onDelete: CascadeOperation.setNull, nullable: true)
+          .build();
+
+      final schema = Schema([albums, artists], foreignkeys: true);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final newArtistId = await Database.instance.tables['artists']!.insert({
+        'artist_name': 'Bill',
+      });
+
+      await Database.instance.tables['albums']!.insert({
+        'album_name': 'Music',
+        'artist_id': newArtistId,
+      });
+
+      await Database.instance.tables['artists']!.deleteId(newArtistId);
+
+      final result = await Database.instance.tables['albums']!.query(Query.all());
+
+      await Database.instance.close();
+      await Database.instance.deleteDatabase();
+
+      print(result);
+
+      expect(result, [
+        {'album_name': 'Music', 'album_id': 1, 'artist_id': null}
+      ]);
+    });
+
     test('converter', () async {
       final artistsTable = Table.builder('artists')
           .text('artist_name')
