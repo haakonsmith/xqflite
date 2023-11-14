@@ -84,14 +84,8 @@ class XqfliteDatabase implements QueryExecutor {
 
     if (nukeDb) await sql.deleteDatabase(dbPath);
     _db = await sql.openDatabase(dbPath);
-    // print(_db!.path);
-
-    await execute('PRAGMA foreign_keys = ${schema.foreignkeys ? "ON" : "OFF"}');
 
     for (final table in schema.tables.values) {
-      // print("executing:");
-      // print(table.toSql());
-
       await _db!.execute(table.toSql());
     }
 
@@ -102,10 +96,8 @@ class XqfliteDatabase implements QueryExecutor {
     final metaTableQuery = await metaTable.query(Query.all());
     final currentVersion = metaTableQuery.firstOrNull?['current_version'] as int? ?? migrations.length;
 
-    print('currentVersion: $currentVersion');
-
     for (var i = currentVersion; i < migrations.length; i++) {
-      await migrations.elementAt(i)(this, i);
+      await migrations[i](this, i);
     }
 
     if (metaTableQuery.isEmpty) {
@@ -163,7 +155,7 @@ class XqfliteDatabase implements QueryExecutor {
   }
 
   /// Convenience method for updating rows in the database. Returns the number of changes made
-  /// 
+  ///
   /// Update [table] with [values], a map from column names to new column values. null is a valid value that will be translated to NULL.
   @override
   Future<int> update(Table table, Map<String, Object?> values, Query query) async {
