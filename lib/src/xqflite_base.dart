@@ -84,13 +84,13 @@ class XqfliteDatabase implements QueryExecutor {
 
     if (nukeDb) await sql.deleteDatabase(dbPath);
     _db = await sql.openDatabase(dbPath);
-    print(_db!.path);
+    // print(_db!.path);
 
     await execute('PRAGMA foreign_keys = ${schema.foreignkeys ? "ON" : "OFF"}');
 
     for (final table in schema.tables.values) {
-      print("executing:");
-      print(table.toSql());
+      // print("executing:");
+      // print(table.toSql());
 
       await _db!.execute(table.toSql());
     }
@@ -137,7 +137,7 @@ class XqfliteDatabase implements QueryExecutor {
   }
 
   Future<void> execute(String sql) async {
-    print('executing: $sql');
+    // print('executing: $sql');
     await _db!.execute(sql);
   }
 
@@ -155,20 +155,28 @@ class XqfliteDatabase implements QueryExecutor {
   /// Returns number of rows affected
   @override
   Future<int> delete(Table table, Query query) async {
-    final newIndex = await _db!.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+    final count = await _db!.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
     _tableUpdates.add(table);
 
-    return newIndex;
+    return count;
   }
 
+  /// Convenience method for updating rows in the database. Returns the number of changes made
+  /// 
+  /// Update [table] with [values], a map from column names to new column values. null is a valid value that will be translated to NULL.
   @override
   Future<int> update(Table table, Map<String, Object?> values, Query query) async {
-    final newIndex = await _db!.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+    // final count = await _db!.update(table.name, values, where: "billing_item_id IN (?)", whereArgs: ["79, 80"]);
+    final count = await _db!.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+    // final count = await _db!.upd(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+
+    print(query.whereStringOrNull());
+    print(query.valuesOrNull);
 
     _tableUpdates.add(table);
 
-    return newIndex;
+    return count;
   }
 
   Future<List<Map<String, Object?>>> rawQuery(String query) async {

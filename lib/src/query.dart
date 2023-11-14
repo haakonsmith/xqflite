@@ -97,10 +97,12 @@ final class WhereClauseIn implements WhereClause {
   @override
   final String column;
 
-  const WhereClauseIn(this.column, {this.operator = BooleanOperator.inital});
+  final int count;
+
+  const WhereClauseIn(this.column, this.count, {this.operator = BooleanOperator.inital});
 
   @override
-  String toSql() => '${operator.sql} $column IN (?)';
+  String toSql() => '${operator.sql} $column IN (${List.generate(count, (index) => "?").join(', ')})';
 
   @override
   WhereClauseContains copyWith({
@@ -159,7 +161,7 @@ final class Query extends PartialQuery {
   static Query contains<T>(String column, T value) => Query([WhereClauseContains(column)], [value.toString()]);
 
   /// Actually does what you'd expect, the above is for direct use
-  static Query containsList<T>(String column, List<T> value) => Query([WhereClauseIn(column)], [value.map((e) => e.toString()).join(',')]);
+  static Query inList<T>(String column, List<T> value) => Query([WhereClauseIn(column, value.length)], [...value.map((e) => e.toString())]);
 
   static Query greaterThan<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.greaterThan)], [value.toString()]);
   static Query greaterThanOrEqual<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.greaterThanOrEqual)], [value.toString()]);
