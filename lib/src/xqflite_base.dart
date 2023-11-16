@@ -47,6 +47,8 @@ class XqfliteDatabase implements QueryExecutor {
   late Map<String, DbTable> tables;
   late List<Migration> migrations;
 
+  String? get path => _db?.path;
+
   Future<void> open(
     Schema schema, {
     String dbPath = 'default.db',
