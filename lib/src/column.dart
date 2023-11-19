@@ -74,15 +74,13 @@ final class ReferenceColumn extends Column {
     final buffer = StringBuffer('$name INTEGER REFERENCES ${references.name} (${references.primaryKey.toSqlList()})');
 
     if (onDelete != null) {
-      buffer.writeln();
-      buffer.write("ON DELETE ");
-      buffer.writeln(onDelete!.sql);
+      buffer.write(" ON DELETE ");
+      buffer.write(onDelete!.sql);
     }
 
     if (onUpdate != null) {
-      buffer.writeln();
-      buffer.write("ON UPDATE ");
-      buffer.writeln(onUpdate!.sql);
+      buffer.write(" ON UPDATE ");
+      buffer.write(onUpdate!.sql);
     }
 
     return buffer.toString();

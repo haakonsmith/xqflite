@@ -29,9 +29,7 @@ final class Batch {
   }
 
   void delete(Table table, Query query) async {
-    batch.delete(table.name, where: query.whereStringWithValues()
-        // , whereArgs: query.valuesOrNull
-        );
+    batch.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
     _updates.add(table);
   }
@@ -50,6 +48,7 @@ final class BatchTable {
   const BatchTable(this.batch, this.table);
 
   BatchTableWithConverter<T> withConverter<T>(Converter<T> converter) => BatchTableWithConverter(this, converter);
+  BatchTable innerJoin(DbTable joinee, Query on) => BatchTable(batch, table.innerJoin(joinee.table, on));
 
   void insert(Map<String, Object?> values) {
     batch.insert(table, values);
@@ -69,6 +68,8 @@ final class BatchTableWithConverter<T> {
   final BatchTable batch;
 
   const BatchTableWithConverter(this.batch, this.converter);
+
+  BatchTable innerJoin(DbTable joinee, Query on) => batch.innerJoin(joinee, on);
 
   void insert(T value) {
     batch.insert(converter.toDb(value));

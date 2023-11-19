@@ -66,24 +66,24 @@ final class WhereClauseEquals implements WhereClause {
   }
 }
 
-final class WhereClauseContains implements WhereClause {
+final class WhereClauseLike implements WhereClause {
   @override
   final BooleanOperator operator;
 
   @override
   final String column;
 
-  const WhereClauseContains(this.column, {this.operator = BooleanOperator.inital});
+  const WhereClauseLike(this.column, {this.operator = BooleanOperator.inital});
 
   @override
-  String toSql() => '${operator.sql} $column LIKE "%?%"';
+  String toSql() => '${operator.sql} $column LIKE ?';
 
   @override
-  WhereClauseContains copyWith({
+  WhereClauseLike copyWith({
     BooleanOperator? operator,
     String? column,
   }) {
-    return WhereClauseContains(
+    return WhereClauseLike(
       column ?? this.column,
       operator: operator ?? this.operator,
     );
@@ -105,11 +105,11 @@ final class WhereClauseIn implements WhereClause {
   String toSql() => '${operator.sql} $column IN (${List.generate(count, (index) => "?").join(', ')})';
 
   @override
-  WhereClauseContains copyWith({
+  WhereClauseLike copyWith({
     BooleanOperator? operator,
     String? column,
   }) {
-    return WhereClauseContains(
+    return WhereClauseLike(
       column ?? this.column,
       operator: operator ?? this.operator,
     );
@@ -143,7 +143,7 @@ final class PartialQuery {
 
   Query withValues(List<String> values) => Query(whereClauses, values, orderByClauses);
 
-  String orderByString() => orderByClauses.isNotEmpty ? "${orderByClauses.map((e) => e.toSql()).join('\n')}" : '';
+  String? orderByString() => orderByClauses.isNotEmpty ? orderByClauses.map((e) => e.toSql()).join('\n') : null;
   String whereString() => whereClauses.map((e) => e.toSql()).join('\n');
   String? whereStringOrNull() => isAll ? null : whereString();
 }
@@ -158,7 +158,7 @@ final class Query extends PartialQuery {
   static Query equals<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.equals)], [value.toString()]);
   static Query notEquals<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.notEquals)], [value.toString()]);
 
-  static Query contains<T>(String column, T value) => Query([WhereClauseContains(column)], [value.toString()]);
+  static Query like<T>(String column, T value) => Query([WhereClauseLike(column)], [value.toString()]);
 
   /// Actually does what you'd expect, the above is for direct use
   static Query inList<T>(String column, List<T> value) => Query([WhereClauseIn(column, value.length)], [...value.map((e) => e.toString())]);

@@ -3,8 +3,6 @@ import 'dart:io';
 
 import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/src/column.dart';
-// import 'package:sqflite/sqflite.dart' as sql;
-// import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqfliteFfi;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;
 import 'package:xqflite/xqflite.dart';
 
@@ -79,9 +77,10 @@ class XqfliteDatabase implements QueryExecutor {
     String dbPath, {
     bool nukeDb = false,
   }) async {
-    if (Platform.isWindows && Platform.isLinux) {
+    if (Platform.isWindows || Platform.isLinux) {
       sql.sqfliteFfiInit();
     }
+    
     sql.databaseFactory = sql.databaseFactoryFfi;
 
     if (nukeDb) await sql.deleteDatabase(dbPath);
@@ -161,12 +160,7 @@ class XqfliteDatabase implements QueryExecutor {
   /// Update [table] with [values], a map from column names to new column values. null is a valid value that will be translated to NULL.
   @override
   Future<int> update(Table table, Map<String, Object?> values, Query query) async {
-    // final count = await _db!.update(table.name, values, where: "billing_item_id IN (?)", whereArgs: ["79, 80"]);
     final count = await _db!.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
-    // final count = await _db!.upd(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
-
-    print(query.whereStringOrNull());
-    print(query.valuesOrNull);
 
     _tableUpdates.add(table);
 
@@ -179,7 +173,12 @@ class XqfliteDatabase implements QueryExecutor {
 
   @override
   Future<List<Map<String, Object?>>> query(Table table, Query query) async {
-    return await rawQuery(table.queryString(query));
+    return await _db!.query(
+      table.tableIdQuery(),
+      where: query.whereStringOrNull(),
+      whereArgs: query.valuesOrNull,
+      orderBy: query.orderByString(),
+    );
   }
 
   @override
@@ -201,7 +200,7 @@ class XqfliteDatabase implements QueryExecutor {
   sql.Batch getRawBatch() => _db!.batch();
 
   @override
-  Future<void> batch(void Function(Batch batch) executor) async {
+  Future<List<Object?>> batch(void Function(Batch batch) executor) async {
     final batch = Batch(this);
 
     executor(batch);
@@ -211,5 +210,7 @@ class XqfliteDatabase implements QueryExecutor {
     for (final update in result.updates) {
       _tableUpdates.add(update);
     }
+
+    return result.rawResult;
   }
 }

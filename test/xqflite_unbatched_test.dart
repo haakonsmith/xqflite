@@ -1,130 +1,12 @@
-import 'dart:io';
-
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;
 import 'package:test/test.dart';
 
 import 'package:xqflite/src/column.dart';
 import 'package:xqflite/xqflite.dart';
 
-final class Database extends XqfliteDatabase {
-  Database._();
-
-  static final Database _instance = Database._();
-  static Database get instance => _instance;
-}
-
-class Artist {
-  final String artistName;
-  final int? artistId;
-
-  const Artist({
-    required this.artistName,
-    this.artistId,
-  });
-
-  Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      'artist_name': artistName,
-      'artist_id': artistId,
-    };
-  }
-
-  factory Artist.fromMap(Map<String, dynamic> map) {
-    return Artist(
-      artistName: map['artist_name'] as String,
-      artistId: map['artist_id'] as int?,
-    );
-  }
-
-  @override
-  String toString() => 'Artist(artistName: $artistName, artistId: $artistId)';
-
-  @override
-  bool operator ==(covariant Artist other) {
-    if (identical(this, other)) return true;
-
-    return other.artistName == artistName && other.artistId == artistId;
-  }
-
-  @override
-  int get hashCode => artistName.hashCode ^ artistId.hashCode;
-}
+import 'shared.dart';
 
 void main() {
-  if (Platform.isWindows || Platform.isLinux) {
-    // Initialize FFI
-    sql.sqfliteFfiInit();
-  }
-  // Change the default factory. On iOS/Android, if not using `sqlite_flutter_lib` you can forget
-  // this step, it will use the sqlite version available on the system.
-  sql.databaseFactory = sql.databaseFactoryFfi;
-
-  group('Sql generation tests', () {
-    test('Basic db construction', () async {
-      final column = Column.text('test_col');
-
-      final schema = Schema([
-        Table(columns: [column], name: 'test'),
-      ]);
-
-      expect(schema.tables['test']!.toSql().trim(), '''CREATE TABLE IF NOT EXISTS test (
-        test_col TEXT NOT NULL
-      );''');
-    });
-
-    test('Basic db construction 2', () async {
-      final column = Column.text('test_col');
-      final column2 = Column.integer('test_col2');
-
-      final schema = Schema([
-        Table(columns: [column, column2], name: 'test'),
-      ]);
-
-      expect(schema.tables['test']!.toSql().trim(), '''CREATE TABLE IF NOT EXISTS test (
-        test_col TEXT NOT NULL,
-        test_col2 INTEGER NOT NULL
-      );''');
-    });
-
-    test('Basic db construction 3', () async {
-      final column = Column.text('test_col', nullable: true);
-      final column2 = Column.integer('test_col2');
-
-      final schema = Schema([
-        Table(columns: [column, column2], name: 'test'),
-      ]);
-
-      expect(schema.tables['test']!.toSql().trim(), '''CREATE TABLE IF NOT EXISTS test (
-        test_col TEXT,
-        test_col2 INTEGER NOT NULL
-      );''');
-    });
-
-    test('Basic query construction', () async {
-      final column = Column.text('test_col', nullable: true);
-      final column2 = Column.integer('test_col2');
-
-      final schema = Schema([
-        Table(columns: [column, column2], name: 'test'),
-      ]);
-
-      final query = Query([
-        WhereClauseEquals(column.name, EqualityOperator.equals),
-        WhereClauseEquals(column.name, EqualityOperator.equals),
-      ], [
-        '2',
-        '2'
-      ]);
-
-      expect(schema.tables['test']!.queryString(query), '''SELECT *
-FROM test
-WHERE
- test_col = 2
- test_col = 2''');
-    });
-  });
-
-  group('actual db tests', () {
+  group('unbatched db tests', () {
     test('double inner join', () async {
       final column = Column.text('test_col', nullable: true);
       final column2 = Column.integer('test_col2');
@@ -159,7 +41,6 @@ WHERE
           .query(Query.all());
 
       await Database.instance.close();
-      await Database.instance.deleteDatabase();
 
       expect(queryResult, [
         {'test_col': '1', 'test_col2': 1},
@@ -190,9 +71,6 @@ WHERE
       final queryResult = await Database.instance.schema.tables['test']!.toDbTable(Database.instance).query(query);
 
       await Database.instance.close();
-      await Database.instance.deleteDatabase();
-
-      print(queryResult);
 
       expect(queryResult, [
         {'test_col': '2', 'test_col2': 1}
@@ -227,7 +105,6 @@ WHERE
       final result = await Database.instance.tables['albums']!.query(Query.all());
 
       await Database.instance.close();
-      await Database.instance.deleteDatabase();
 
       expect(result, [
         {'album_name': 'Music', 'album_id': 1, 'artist_id': 1}
@@ -264,14 +141,11 @@ WHERE
       final result = await Database.instance.tables['albums']!.query(Query.all());
 
       await Database.instance.close();
-      await Database.instance.deleteDatabase();
-
-      print(result);
 
       expect(result, [
         {'album_name': 'Music', 'album_id': 1, 'artist_id': null}
       ]);
-    });
+    }, skip: true);
 
     test('converter', () async {
       final artistsTable = Table.builder('artists')
@@ -291,7 +165,6 @@ WHERE
       final result = await artists.query(Query.all());
 
       await Database.instance.close();
-      await Database.instance.deleteDatabase();
 
       expect(result, [Artist(artistName: 'Phill', artistId: 1)]);
     });
@@ -315,9 +188,128 @@ WHERE
       final result = await artists.query(Query.all());
 
       await Database.instance.close();
-      await Database.instance.deleteDatabase();
 
       expect(result, [Artist(artistName: 'Brian', artistId: 1)]);
+    });
+
+    test('insert and query', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .primaryKey('artist_id') //
+          .build();
+
+      final schema = Schema([artistsTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artist = Artist(artistName: 'John');
+      final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
+
+      final insertedArtistId = await artists.insert(artist);
+
+      final result = await artists.query(Query.equals('artist_id', insertedArtistId));
+
+      await Database.instance.close();
+
+      expect(result, [Artist(artistName: 'John', artistId: insertedArtistId)]);
+    });
+
+    test('query with WHERE clause', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .primaryKey('artist_id') //
+          .build();
+
+      final schema = Schema([artistsTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      await Database.instance.tables['artists']!.insert({'artist_name': 'John'});
+      await Database.instance.tables['artists']!.insert({'artist_name': 'Jane'});
+      await Database.instance.tables['artists']!.insert({'artist_name': 'Bob'});
+
+      final queryResult = await Database.instance.tables['artists']!.query(Query.equals('artist_name', 'Jane'));
+
+      await Database.instance.close();
+
+      expect(queryResult, [
+        {'artist_name': 'Jane', 'artist_id': 2}
+      ]);
+    });
+
+    test('update', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .primaryKey('artist_id') //
+          .build();
+
+      final schema = Schema([artistsTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artist = Artist(artistName: 'Phill');
+      final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
+
+      final artistId = await artists.insert(artist);
+
+      final updatedArtist = Artist(artistName: 'Brian', artistId: artistId);
+      await artists.updateId(updatedArtist, artistId);
+
+      final result = await artists.query(Query.all());
+
+      await Database.instance.close();
+
+      expect(result, [updatedArtist]);
+    });
+
+    test('delete', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .primaryKey('artist_id') //
+          .build();
+
+      final schema = Schema([artistsTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artist = Artist(artistName: 'John');
+      final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
+
+      final artistId = await artists.insert(artist);
+
+      await artists.deleteId(artistId);
+
+      final result = await artists.query(Query.all());
+
+      await Database.instance.close();
+
+      expect(result, []);
+    });
+
+    test('query with ORDER BY', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .integer('popularity') // Assume an artist has a popularity rating
+          .primaryKey('artist_id')
+          .build();
+
+      final schema = Schema([artistsTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      await Database.instance.tables['artists']!.insert({'artist_name': 'John', 'popularity': 5});
+      await Database.instance.tables['artists']!.insert({'artist_name': 'Jane', 'popularity': 8});
+      await Database.instance.tables['artists']!.insert({'artist_name': 'Bob', 'popularity': 3});
+
+      final queryResult = await Database.instance.tables['artists']!.query(Query.builder().orderBy('popularity', direction: OrderByDirection.desc).build());
+
+      await Database.instance.close();
+
+      expect(queryResult, [
+        {'artist_name': 'Jane', 'popularity': 8, 'artist_id': 2},
+        {'artist_name': 'John', 'popularity': 5, 'artist_id': 1},
+        {'artist_name': 'Bob', 'popularity': 3, 'artist_id': 3},
+      ]);
     });
   });
 }

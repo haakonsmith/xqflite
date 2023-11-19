@@ -115,6 +115,16 @@ ${columns.map((e) => '        ${e.toSql()}').join(",\n")}
 
   String get tableName => name;
 
+  String tableIdQuery() {
+    final buffer = StringBuffer('$tableName\n');
+
+    for (final join in childJoins) {
+      buffer.writeln(join.toSql());
+    }
+
+    return buffer.toString();
+  }
+
   String queryString(Query query) {
     final buffer = StringBuffer('SELECT * FROM $tableName\n');
 
