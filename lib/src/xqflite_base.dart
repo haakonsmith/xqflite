@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/src/column.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;
 import 'package:xqflite/xqflite.dart';
-
-typedef Migration = Future<void> Function(XqfliteDatabase db, int version);
 
 class XqfliteSqlBuilder extends StatementBuilder {
   final XqfliteDatabase database;
@@ -43,34 +43,35 @@ class XqfliteDatabase implements QueryExecutor {
   final StreamController<Table> _tableUpdates = StreamController.broadcast();
   late Schema schema;
   late Map<String, DbTable> tables;
-  late List<Migration> migrations;
 
   String? get path => _db?.path;
+
+  Future<void> Function(XqfliteDatabase db)? onBeforeMigration;
 
   Future<void> open(
     Schema schema, {
     String dbPath = 'default.db',
-    List<Migration> migrations = const [],
     bool nukeDb = false,
-  }) {
-    if (initialised) return Future.value();
+    Future<void> Function(XqfliteDatabase db)? onBeforeMigration,
+  }) async {
+    if (initialised) return;
 
     if (_initialisationCompleter == null) {
       _initialisationCompleter = Completer();
 
       this.schema = schema;
-      this.migrations = migrations;
       this.schema.tables[metaTableName] = Table(columns: [Column.integer('current_version')], name: metaTableName);
+      this.onBeforeMigration = onBeforeMigration;
 
       tables = schema.tables.map((key, table) => MapEntry(key, table.toDbTable(this)));
 
-      _open(
+      await _open(
         dbPath,
         nukeDb: nukeDb,
       ).whenComplete(() => _initialisationCompleter!.complete());
     }
 
-    return _initialisationCompleter!.future;
+    await _initialisationCompleter!.future;
   }
 
   Future<void> _open(
@@ -90,17 +91,26 @@ class XqfliteDatabase implements QueryExecutor {
       await _db!.execute(table.toSql());
     }
 
-    await applyMigrations();
+    await onBeforeMigration?.call(this);
+    await _applyMigrations();
   }
 
-  Future<void> applyMigrations() async {
-    final currentVersion = (await rawQuery('PRAGMA user_version')).first['user_version'] as int? ?? migrations.length;
+  Future<void> _applyMigrations() async {
+    final migrations = schema.migrations..sortBy<num>((element) => element.version);
+    final latestMigration = migrations.lastOrNull;
+    var version = (await rawQuery('PRAGMA user_version')).first['user_version'] as int? ?? latestMigration?.version ?? 0;
 
-    for (var i = currentVersion; i < migrations.length; i++) {
-      await migrations[i](this, i);
+    for (final migration in migrations) {
+      if (migration.version < version) continue;
+      if (migration.version > version) throw MigrationMissingError(version);
+      if (migration.version == version) {
+        await migration.migrator(this, migration.version);
+
+        version++;
+      }
     }
 
-    await execute('PRAGMA user_version = ${migrations.length}');
+    await execute('PRAGMA user_version = $version');
   }
 
   Future<void> addTable(Table table) async {

@@ -101,6 +101,7 @@ void testDb(
   String label,
   Future<void> Function(Database db) runner, {
   List<Migration> migrations = const [],
+  int? initialVersion,
 }) {
   test(label, () async {
     final artistsTable = Table.builder('artists')
@@ -108,11 +109,21 @@ void testDb(
         .primaryKey('artist_id') //
         .build();
 
-    final albumsTable = Table.builder('albums').text('album_name').primaryKey('album_id').reference('artist_id', artistsTable).build();
+    final albumsTable = Table.builder('albums') //
+        .text('album_name')
+        .primaryKey('album_id')
+        .reference('artist_id', artistsTable)
+        .build();
 
-    final schema = Schema([artistsTable, albumsTable]);
+    final schema = Schema([artistsTable, albumsTable], migrations: migrations);
 
-    await Database.instance.open(schema, dbPath: ':memory:', migrations: migrations);
+    await Database.instance.open(
+      schema,
+      dbPath: ':memory:',
+      onBeforeMigration: (db) async {
+        if (initialVersion != null) await db.execute('PRAGMA foreign_keys = $initialVersion');
+      },
+    );
 
     await runner(Database.instance);
 
