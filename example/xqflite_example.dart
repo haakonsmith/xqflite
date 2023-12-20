@@ -7,7 +7,7 @@ void main() {
 }
 
 class XqfliteExample extends StatelessWidget {
-  const XqfliteExample({Key? key}) : super(key: key);
+  const XqfliteExample({super.key});
 
   @override
   Widget build(BuildContext context) {

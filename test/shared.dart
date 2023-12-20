@@ -97,7 +97,11 @@ class Album {
   int get hashCode => albumName.hashCode ^ albumId.hashCode ^ artistId.hashCode;
 }
 
-void testDb(String label, Future<void> Function(Database db) runner) {
+void testDb(
+  String label,
+  Future<void> Function(Database db) runner, {
+  List<Migration> migrations = const [],
+}) {
   test(label, () async {
     final artistsTable = Table.builder('artists')
         .text('artist_name')
@@ -108,7 +112,7 @@ void testDb(String label, Future<void> Function(Database db) runner) {
 
     final schema = Schema([artistsTable, albumsTable]);
 
-    await Database.instance.open(schema, dbPath: ':memory:');
+    await Database.instance.open(schema, dbPath: ':memory:', migrations: migrations);
 
     await runner(Database.instance);
 

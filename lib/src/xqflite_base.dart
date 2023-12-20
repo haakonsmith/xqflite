@@ -94,7 +94,6 @@ class XqfliteDatabase implements QueryExecutor {
   }
 
   Future<void> applyMigrations() async {
-    final metaTableQuery = await metaTable.query(Query.all());
     final currentVersion = (await rawQuery('PRAGMA user_version')).first['user_version'] as int? ?? migrations.length;
 
     for (var i = currentVersion; i < migrations.length; i++) {
