@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
 import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/src/column.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;

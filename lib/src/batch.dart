@@ -22,6 +22,15 @@ final class Batch {
     );
   }
 
+  /// This executes raw sql on the batch
+  /// 
+  /// This is useful for things like `CREATE TABLE` or `DROP TABLE`
+  /// 
+  /// It does not update the table updates
+  void execute(String sql, [List<Object?>? arguments]) async {
+    batch.execute(sql, arguments);
+  }
+
   void insert(Table table, Map<String, Object?> values) async {
     batch.insert(table.name, values);
 
