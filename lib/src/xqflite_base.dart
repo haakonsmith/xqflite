@@ -80,7 +80,7 @@ class XqfliteDatabase implements QueryExecutor {
     if (Platform.isWindows || Platform.isLinux) {
       sql.sqfliteFfiInit();
     }
-    
+
     sql.databaseFactory = sql.databaseFactoryFfi;
 
     if (nukeDb) await sql.deleteDatabase(dbPath);
@@ -95,17 +95,13 @@ class XqfliteDatabase implements QueryExecutor {
 
   Future<void> applyMigrations() async {
     final metaTableQuery = await metaTable.query(Query.all());
-    final currentVersion = metaTableQuery.firstOrNull?['current_version'] as int? ?? migrations.length;
+    final currentVersion = (await rawQuery('PRAGMA user_version')).first['user_version'] as int? ?? migrations.length;
 
     for (var i = currentVersion; i < migrations.length; i++) {
       await migrations[i](this, i);
     }
 
-    if (metaTableQuery.isEmpty) {
-      await metaTable.insert({'current_version': migrations.length});
-    } else {
-      await metaTable.updateId({'current_version': migrations.length}, 0);
-    }
+    await execute('PRAGMA user_version = ${migrations.length}');
   }
 
   Future<void> addTable(Table table) async {
