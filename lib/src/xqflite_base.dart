@@ -182,6 +182,8 @@ class XqfliteDatabase implements QueryExecutor {
       where: query.whereStringOrNull(),
       whereArgs: query.valuesOrNull,
       orderBy: query.orderByString(),
+      distinct: query.distinct,
+      columns: query.columns,
     );
   }
 

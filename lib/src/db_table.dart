@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/xqflite.dart';
 import 'package:xqflite/src/validation.dart';
@@ -74,7 +75,11 @@ final class DbTableWithConverter<T> {
   }
 
   Future<List<T>> query(Query query) async {
-    return (await table.query(query)) //
+    if (kDebugMode && query.columns != null) {
+      debugPrint('Warning: columns are ignored in query for table $tableName. If you want to select specific columns, do not use a converter.');
+    }
+
+    return (await table.query(query.withoutColumns())) //
         .map((e) => fromDb(e))
         .toList();
   }

@@ -134,14 +134,22 @@ final class OrderByClause {
 
 /// A query without the values
 final class PartialQuery {
+  final List<String>? columns;
   final List<WhereClause> whereClauses;
   final List<OrderByClause> orderByClauses;
+  final bool distinct;
 
   bool get isAll => whereClauses.isEmpty;
 
-  const PartialQuery(this.whereClauses, [this.orderByClauses = const []]);
+  const PartialQuery(this.whereClauses, {this.orderByClauses = const [], this.distinct = false, this.columns});
 
-  Query withValues(List<String> values) => Query(whereClauses, values, orderByClauses);
+  Query withValues(List<String> values) => Query(
+        whereClauses,
+        values,
+        orderByClauses: orderByClauses,
+        distinct: distinct,
+        columns: columns,
+      );
 
   String? orderByString() => orderByClauses.isNotEmpty ? orderByClauses.map((e) => e.toSql()).join('\n') : null;
   String whereString() => whereClauses.map((e) => e.toSql()).join('\n');
@@ -151,7 +159,7 @@ final class PartialQuery {
 final class Query extends PartialQuery {
   final List<String> values;
 
-  const Query(super.whereClauses, this.values, [super.orderByClauses = const []]);
+  const Query(super.whereClauses, this.values, {super.orderByClauses, super.distinct, super.columns});
   const Query.all()
       : values = const [],
         super(const []);
@@ -168,11 +176,17 @@ final class Query extends PartialQuery {
   static Query lessThan<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.lessThan)], [value.toString()]);
   static Query lessThanOrEqual<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.lessThanOrEqual)], [value.toString()]);
 
-  static QueryBuilder builder() => QueryBuilder();
+  static QueryBuilder builder([List<String>? columns]) => QueryBuilder(columns: columns);
 
   List<String>? get valuesOrNull => isAll ? null : values;
 
   String whereStringWithValues() => whereClauses.mapIndexed((i, e) => e.toSql().replaceAll('?', values[i])).join('\n');
+
+  Query withoutColumns() {
+    if (columns == null) return this;
+
+    return Query(whereClauses, values, orderByClauses: orderByClauses, distinct: distinct);
+  }
 }
 
 final class QueryOperatorBuilder {
@@ -189,16 +203,25 @@ final class QueryOperatorBuilder {
 }
 
 final class QueryBuilder {
+  final List<String>? columns;
   final List<BooleanOperator> operators;
   final List<WhereClause> whereClauses;
   final List<OrderByClause> orderByClauses;
   final List<String> values;
+  bool isDistinct;
 
-  QueryBuilder()
-      : orderByClauses = [],
+  QueryBuilder({this.columns})
+      : isDistinct = false,
+        orderByClauses = [],
         whereClauses = [],
         operators = [],
         values = [];
+
+  QueryBuilder distinct() => this..isDistinct = true;
+
+  QueryOperatorBuilder like<T>(String column, T value) => QueryOperatorBuilder(this
+    ..whereClauses.add(WhereClauseLike(column))
+    ..values.add(value.toString()));
 
   QueryOperatorBuilder equals<T>(String column, T value) => QueryOperatorBuilder(this
     ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.equals))
@@ -237,7 +260,9 @@ final class QueryBuilder {
     return Query(
       whereClauses,
       values,
-      orderByClauses,
+      orderByClauses: orderByClauses,
+      distinct: isDistinct,
+      columns: columns,
     );
   }
 }
