@@ -121,7 +121,7 @@ void testDb(
       schema,
       dbPath: ':memory:',
       onBeforeMigration: (db) async {
-        if (initialVersion != null) await db.execute('PRAGMA foreign_keys = $initialVersion');
+        if (initialVersion != null) await db.execute('PRAGMA user_version = ${initialVersion + 1}');
       },
     );
 

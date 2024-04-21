@@ -31,19 +31,29 @@ void main() {
     );
 
     test('migration with invalid migration path', () async {
-      try {
-        await Database.instance.open(
+      await expectLater(
+        () async => Database.instance.open(
           Schema([], migrations: [Migration(version: 1, migrator: (db, version) async {})]),
           dbPath: ':memory:',
-          onBeforeMigration: (db) {
-            return db.execute('PRAGMA foreign_keys = 0');
-          },
-        );
+          onBeforeMigration: (db) => db.execute('PRAGMA user_version = 1'),
+        ),
+        throwsA(isA<MigrationMissingError>()),
+      );
+    });
 
-        fail('should throw');
-      } catch (e) {
-        expect(e, isA<MigrationMissingError>());
-      }
+    test('migration with initial version of 0', () async {
+      await Database.instance.open(
+        Schema([], migrations: [
+          Migration(
+              version: 0,
+              migrator: (db, version) async {
+                throw Exception("This shouldn't run!");
+              })
+        ]),
+        dbPath: ':memory:',
+        nukeDb: true,
+        onBeforeMigration: (db) => db.execute('PRAGMA foreign_keys = 1'),
+      );
     });
   });
 }

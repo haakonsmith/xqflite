@@ -97,19 +97,29 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void> _applyMigrations() async {
     final migrations = schema.migrations..sortBy<num>((element) => element.version);
     final latestMigration = migrations.lastOrNull;
-    var version = (await rawQuery('PRAGMA user_version')).first['user_version'] as int? ?? latestMigration?.version ?? 0;
+    var version = ((await rawQuery('PRAGMA user_version')).first['user_version'] as int? ?? 0);
+
+    // If version == 0, then we haven't run any migrations
+    if (version == 0) {
+      // We transform from n space to n + 1 which is what it expected
+      version = (latestMigration?.version ?? 0) + 1;
+      // Run this then so that it doesn't run a migration
+      version++;
+    }
 
     for (final migration in migrations) {
-      if (migration.version < version) continue;
-      if (migration.version > version) throw MigrationMissingError(version);
-      if (migration.version == version) {
+      final migrationVersion = migration.version + 1;
+
+      if (migrationVersion < version) continue;
+      if (migrationVersion > version) throw MigrationMissingError(version);
+      if (migrationVersion == version) {
         await migration.migrator(this, migration.version);
 
         version++;
       }
     }
 
-    await execute('PRAGMA user_version = $version');
+    await execute('PRAGMA user_version = ${version}');
   }
 
   Future<void> addTable(Table table) async {
@@ -195,6 +205,8 @@ class XqfliteDatabase implements QueryExecutor {
       yield await this.query(table, query);
     }
   }
+
+  Stream<Table> watchUpdates() => _tableUpdates.stream;
 
   /// Provides a safe builder access for querying the database when you are unsure of the initialisation status
   Stream<List<T>> when<T>(Stream<List<T>> Function(XqfliteDatabase db) builder) async* {
