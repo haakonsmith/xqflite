@@ -119,7 +119,7 @@ class XqfliteDatabase implements QueryExecutor {
       }
     }
 
-    await execute('PRAGMA user_version = ${version}');
+    await execute('PRAGMA user_version = $version');
   }
 
   Future<void> addTable(Table table) async {

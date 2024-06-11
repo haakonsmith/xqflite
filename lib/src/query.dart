@@ -16,7 +16,7 @@ enum EqualityOperator {
 enum BooleanOperator {
   and('and'),
   or('and'),
-  inital('');
+  initial('');
 
   final String sql;
 
@@ -47,7 +47,7 @@ final class WhereClauseEquals implements WhereClause {
   const WhereClauseEquals(
     this.column,
     this.equalityOperator, {
-    this.operator = BooleanOperator.inital,
+    this.operator = BooleanOperator.initial,
   });
 
   @override
@@ -73,7 +73,7 @@ final class WhereClauseLike implements WhereClause {
   @override
   final String column;
 
-  const WhereClauseLike(this.column, {this.operator = BooleanOperator.inital});
+  const WhereClauseLike(this.column, {this.operator = BooleanOperator.initial});
 
   @override
   String toSql() => '${operator.sql} $column LIKE ?';
@@ -99,7 +99,7 @@ final class WhereClauseIn implements WhereClause {
 
   final int count;
 
-  const WhereClauseIn(this.column, this.count, {this.operator = BooleanOperator.inital});
+  const WhereClauseIn(this.column, this.count, {this.operator = BooleanOperator.initial});
 
   @override
   String toSql() => '${operator.sql} $column IN (${List.generate(count, (index) => "?").join(', ')})';
