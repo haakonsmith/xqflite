@@ -6,6 +6,8 @@ import 'package:xqflite/xqflite.dart';
 typedef BatchResult = ({
   List<Table> changedTables,
   List<TableUpdate> tableUpdates,
+  List<TableDelete> tableDeletes,
+  List<TableInsert> tableInserts,
   List<Object?> rawResult,
 });
 
@@ -13,6 +15,8 @@ final class Batch {
   final sqflite.Batch batch;
   final List<Table> _tableChanges = [];
   final List<TableUpdate> _updates = [];
+  final List<TableInsert> _inserts = [];
+  final List<TableDelete> _deletes = [];
 
   Batch(XqfliteDatabase database) : batch = database.getRawBatch();
 
@@ -25,6 +29,8 @@ final class Batch {
       rawResult: await batch.commit(),
       changedTables: _tableChanges,
       tableUpdates: _updates,
+      tableInserts: _inserts,
+      tableDeletes: _deletes,
     );
   }
 
@@ -41,12 +47,14 @@ final class Batch {
     batch.insert(table.name, values);
 
     _tableChanges.add(table);
+    _inserts.add((table, values));
   }
 
   void delete(Table table, Query query) async {
     batch.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
     _tableChanges.add(table);
+    _deletes.add((table, query));
   }
 
   void update(Table table, Map<String, Object?> values, Query query) async {

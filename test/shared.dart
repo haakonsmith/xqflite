@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:test/test.dart';
 import 'package:xqflite/xqflite.dart';
 
@@ -52,6 +53,16 @@ class Artist {
 
   @override
   int get hashCode => artistName.hashCode ^ artistId.hashCode;
+
+  Artist copyWith({
+    String? artistName,
+    ValueGetter<int?>? artistId,
+  }) {
+    return Artist(
+      artistName: artistName ?? this.artistName,
+      artistId: artistId != null ? artistId() : this.artistId,
+    );
+  }
 }
 
 class Album {
@@ -97,6 +108,18 @@ class Album {
   int get hashCode => albumName.hashCode ^ albumId.hashCode ^ artistId.hashCode;
 }
 
+/// Provides you with an in memory database that has the following characteristics
+///
+/// ```md
+/// Table: artists
+///   - artist_name: text
+///   - artist_id: int PRIMARY KEY
+///
+/// Table: albums
+///   - album_name: text
+///   - album_id: int PRIMARY KEY
+///   - artist_id: int References artists
+/// ```
 void testDb(
   String label,
   Future<void> Function(Database db) runner, {

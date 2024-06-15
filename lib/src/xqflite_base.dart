@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/src/column.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;
 import 'package:xqflite/xqflite.dart';
 
 typedef TableUpdate = (Table, Query, Map<String, Object?>);
+typedef TableInsert = (Table, Map<String, Object?>);
+typedef TableDelete = (Table, Query);
 
 class XqfliteSqlBuilder extends StatementBuilder {
   final XqfliteDatabase database;
@@ -42,9 +45,9 @@ class XqfliteDatabase implements QueryExecutor {
 
   sql.Database? _db;
 
-  final StreamController<Table> _tableUpdates = StreamController.broadcast();
-  final StreamController<Query> _deleteController = StreamController.broadcast();
-  final StreamController<Map<String, Object?>> _insertController = StreamController.broadcast();
+  final StreamController<Table> _tableChangeController = StreamController.broadcast();
+  final StreamController<TableDelete> _deleteController = StreamController.broadcast();
+  final StreamController<TableInsert> _insertController = StreamController.broadcast();
   final StreamController<TableUpdate> _updateController = StreamController.broadcast();
   late Schema schema;
   late Map<String, DbTable> tables;
@@ -143,7 +146,7 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void> clone(String newPath) async {
     if (path != null) {
       if (path == ":memory:") {
-        print("Skipping backup for in memory db"); 
+        debugPrint("Skipping backup for in memory db");
       } else {
         await File(path!).copy(newPath);
       }
@@ -165,7 +168,6 @@ class XqfliteDatabase implements QueryExecutor {
   }
 
   Future<void> execute(String sql) async {
-    // print('executing: $sql');
     await _db!.execute(sql);
   }
 
@@ -175,8 +177,8 @@ class XqfliteDatabase implements QueryExecutor {
   Future<int> insert(Table table, Map<String, Object?> values, {sql.ConflictAlgorithm? conflictAlgorithm}) async {
     final newIndex = await _db!.insert(table.name, values, conflictAlgorithm: conflictAlgorithm);
 
-    _tableUpdates.add(table);
-    _insertController.add(values);
+    _tableChangeController.add(table);
+    _insertController.add((table, values));
 
     return newIndex;
   }
@@ -186,8 +188,8 @@ class XqfliteDatabase implements QueryExecutor {
   Future<int> delete(Table table, Query query) async {
     final count = await _db!.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
-    _tableUpdates.add(table);
-    _deleteController.add(query);
+    _tableChangeController.add(table);
+    _deleteController.add((table, query));
 
     return count;
   }
@@ -199,7 +201,7 @@ class XqfliteDatabase implements QueryExecutor {
   Future<int> update(Table table, Map<String, Object?> values, Query query) async {
     final count = await _db!.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
-    _tableUpdates.add(table);
+    _tableChangeController.add(table);
     _updateController.add((table, query, values));
 
     return count;
@@ -225,13 +227,19 @@ class XqfliteDatabase implements QueryExecutor {
   Stream<List<Map<String, Object?>>> watchQuery(Table table, Query query) async* {
     yield await this.query(table, query);
 
-    await for (final _ in _tableUpdates.stream.where((event) => event.name == table.name)) {
+    await for (final _ in _tableChangeController.stream.where((event) => event.name == table.name)) {
       yield await this.query(table, query);
     }
   }
 
-  Stream<Table> watchUpdates() => _tableUpdates.stream;
-  Stream<Table> get tableUpdateStream => _tableUpdates.stream;
+  @Deprecated("This is deprecated, use [tableChangeStream] instead")
+  Stream<Table> watchUpdates() => _tableChangeController.stream;
+
+  /// Returns a stream of any table change
+  Stream<Table> get tableChangeStream => _tableChangeController.stream;
+  Stream<TableUpdate> get tableUpdateStream => _updateController.stream;
+  Stream<TableInsert> get tableInsertStream => _insertController.stream;
+  Stream<TableDelete> get tableDeleteStream => _deleteController.stream;
 
   /// Provides a safe builder access for querying the database when you are unsure of the initialisation status
   Stream<List<T>> when<T>(Stream<List<T>> Function(XqfliteDatabase db) builder) async* {
@@ -251,7 +259,7 @@ class XqfliteDatabase implements QueryExecutor {
     final result = await batch.commit();
 
     for (final update in result.changedTables) {
-      _tableUpdates.add(update);
+      _tableChangeController.add(update);
     }
 
     for (final update in result.tableUpdates) {
