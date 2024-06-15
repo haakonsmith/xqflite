@@ -41,7 +41,7 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void>? get future => _initialisationCompleter?.future;
 
   sql.Database? _db;
-  
+
   final StreamController<Table> _tableUpdates = StreamController.broadcast();
   final StreamController<Query> _deleteController = StreamController.broadcast();
   final StreamController<Map<String, Object?>> _insertController = StreamController.broadcast();
@@ -87,7 +87,7 @@ class XqfliteDatabase implements QueryExecutor {
       sql.sqfliteFfiInit();
     }
 
-    sql.databaseFactory = sql.databaseFactoryFfi;
+    sql.databaseFactoryOrNull = sql.databaseFactoryFfi;
 
     if (nukeDb) await sql.deleteDatabase(dbPath);
     _db = await sql.openDatabase(dbPath);
@@ -133,6 +133,21 @@ class XqfliteDatabase implements QueryExecutor {
     tables[table.name] = DbTable(this, table);
 
     await execute(table.toSql());
+  }
+
+  /// Creates .bak version of this db
+  Future<void> backup() async {
+    clone("$path.bak");
+  }
+
+  Future<void> clone(String newPath) async {
+    if (path != null) {
+      if (path == ":memory:") {
+        print("Skipping backup for in memory db"); 
+      } else {
+        await File(path!).copy(newPath);
+      }
+    }
   }
 
   Future<void> close() {

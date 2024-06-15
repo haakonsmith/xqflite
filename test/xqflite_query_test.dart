@@ -37,8 +37,6 @@ void main() {
 
       final result = await database.artists.innerJoin(database.albums, Query.equals('artists.artist_id', 'albums.artist_id')).query(Query.all());
 
-      print(result);
-
       expect(result, [
         // Album(albumName: 'album1', artistId: 1),
         // Album(albumName: 'album2', artistId: 1),
@@ -66,7 +64,10 @@ void main() {
 
       expect(
         await database.artists.table.query(Query.builder(['artist_name']).distinct().build()),
-        [{'artist_name': 'test'}, {'artist_name': 'test2'}],
+        [
+          {'artist_name': 'test'},
+          {'artist_name': 'test2'}
+        ],
       );
     });
 
