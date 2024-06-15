@@ -11,29 +11,18 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/developing-packages). 
 -->
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+# Xqflite
 
-## Features
+This is Xqflite, it's like sqflite, but with an ***X***. That means it's better... Well or something. This project is made to provide a Firebase-esque type-safe experience for working with sqlite databases. It also is used as a foundation for my own sync solution which will be published sometime soon.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+## Getting Started
 
-## Getting started
+Look at the tests for now.
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+## Performance
 
-## Usage
+I like speed as much as the next bloke, however, this project is mostly about ergonomics. If i had to guess on speed, I'd say, slower than sqflite but no by a whole lot since it's built directly on top of it.
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+## Contributions
 
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+All contributions are welcome :).
