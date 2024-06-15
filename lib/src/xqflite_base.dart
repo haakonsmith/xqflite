@@ -7,6 +7,8 @@ import 'package:xqflite/src/column.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;
 import 'package:xqflite/xqflite.dart';
 
+typedef TableUpdate = (Table, Query, Map<String, Object?>);
+
 class XqfliteSqlBuilder extends StatementBuilder {
   final XqfliteDatabase database;
 
@@ -39,7 +41,11 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void>? get future => _initialisationCompleter?.future;
 
   sql.Database? _db;
+  
   final StreamController<Table> _tableUpdates = StreamController.broadcast();
+  final StreamController<Query> _deleteController = StreamController.broadcast();
+  final StreamController<Map<String, Object?>> _insertController = StreamController.broadcast();
+  final StreamController<TableUpdate> _updateController = StreamController.broadcast();
   late Schema schema;
   late Map<String, DbTable> tables;
 
@@ -151,10 +157,11 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void> executeBuilder(StatementBuilder Function(StatementBuilder builder) builder) => execute(builder(StatementBuilder()).toSql());
 
   @override
-  Future<int> insert(Table table, Map<String, Object?> values) async {
-    final newIndex = await _db!.insert(table.name, values);
+  Future<int> insert(Table table, Map<String, Object?> values, {sql.ConflictAlgorithm? conflictAlgorithm}) async {
+    final newIndex = await _db!.insert(table.name, values, conflictAlgorithm: conflictAlgorithm);
 
     _tableUpdates.add(table);
+    _insertController.add(values);
 
     return newIndex;
   }
@@ -165,6 +172,7 @@ class XqfliteDatabase implements QueryExecutor {
     final count = await _db!.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
     _tableUpdates.add(table);
+    _deleteController.add(query);
 
     return count;
   }
@@ -177,6 +185,7 @@ class XqfliteDatabase implements QueryExecutor {
     final count = await _db!.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
     _tableUpdates.add(table);
+    _updateController.add((table, query, values));
 
     return count;
   }
@@ -207,6 +216,7 @@ class XqfliteDatabase implements QueryExecutor {
   }
 
   Stream<Table> watchUpdates() => _tableUpdates.stream;
+  Stream<Table> get tableUpdateStream => _tableUpdates.stream;
 
   /// Provides a safe builder access for querying the database when you are unsure of the initialisation status
   Stream<List<T>> when<T>(Stream<List<T>> Function(XqfliteDatabase db) builder) async* {
@@ -225,8 +235,12 @@ class XqfliteDatabase implements QueryExecutor {
 
     final result = await batch.commit();
 
-    for (final update in result.updates) {
+    for (final update in result.changedTables) {
       _tableUpdates.add(update);
+    }
+
+    for (final update in result.tableUpdates) {
+      _updateController.add(update);
     }
 
     return result.rawResult;

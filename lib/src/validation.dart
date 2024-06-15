@@ -23,7 +23,8 @@ final class NullableError extends ValidationError {
   const NullableError({required this.keyName, required this.column});
 
   @override
-  String toDisplayString() => "key: $keyName is missing or null in map relating to column: $column (${column.toSql()}).\nHave you made a mistake in the toMap converter? Or forgotten a map key?";
+  String toDisplayString() =>
+      "key: $keyName is missing or null in map relating to column: $column (${column.toSql()}).\nHave you made a mistake in the toMap converter? Or forgotten a map key?";
 }
 
 final class InvalidTypeError extends ValidationError {
@@ -46,7 +47,7 @@ extension Validation on List<Column> {
 
   ValidationError? validateMap(Map<String, Object?> values) {
     for (final column in this) {
-      final value = values[column.name];
+      var value = values[column.name];
 
       final dataType = switch (column) {
         PrimaryKeyColumn _ => DataType.integer,
@@ -54,6 +55,8 @@ extension Validation on List<Column> {
         ReferenceColumn _ => DataType.integer,
         TextColumn _ => DataType.text,
         GenericColumn column => column.dataType,
+        PrimaryKeyCuidColumn _ => DataType.text,
+        PrimaryKeyUuidColumn _ => DataType.text,
       };
 
       final nullable = switch (column) {
@@ -62,7 +65,11 @@ extension Validation on List<Column> {
         ReferenceColumn column => column.nullable,
         TextColumn column => column.nullable,
         PrimaryKeyColumn _ => true,
+        PrimaryKeyCuidColumn _ => true,
+        PrimaryKeyUuidColumn _ => true,
       };
+
+      value ??= column.defaultValueGetter();
 
       if (value == null && !nullable) return NullableError(keyName: column.name, column: column);
 
