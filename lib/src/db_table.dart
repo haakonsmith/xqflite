@@ -46,7 +46,7 @@ class DbTable {
   }
 
   PartialQuery idQuery() => table.primaryKey.query;
-  Query single(int id) => table.primaryKey.query.withValues([id.toString()]);
+  Query single<I>(I id) => table.primaryKey.query.withValues([id.toString()]);
 
   Future<int> deleteId(int id) => delete(single(id));
   Future<int> updateId(Map<String, Object?> values, int id) => update(values, single(id));
@@ -67,8 +67,8 @@ final class DbTableWithConverter<T> {
   T fromDb(RawData data) {
     try {
       return converter.fromDb(data);
-    } on TypeError catch (_) {
-      print('Converter Type Error found, raw data: $data');
+    } on TypeError catch (e) {
+      print('Converter Type Error found, raw data: $data\nerror: $e');
 
       rethrow;
     }
@@ -107,9 +107,9 @@ final class DbTableWithConverter<T> {
   }
 
   PartialQuery idQuery() => table.idQuery();
-  Query single(int id) => table.single(id);
+  Query single<I>(I id) => table.single(id);
 
-  Future<T?> queryId(int id) => query(single(id)).then((value) => value.firstOrNull);
-  Future<int> deleteId(int id) => delete(single(id));
-  Future<int> updateId(T value, int id) => update(value, single(id));
+  Future<T?> queryId<I>(I id) => query(single(id)).then((value) => value.firstOrNull);
+  Future<int> deleteId<I>(I id) => delete(single(id));
+  Future<int> updateId<I>(T value, I id) => update(value, single(id));
 }

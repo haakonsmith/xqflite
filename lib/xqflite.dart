@@ -12,4 +12,6 @@ export 'src/query.dart';
 export 'src/db_table.dart';
 export 'src/sql_builder/sql_builder.dart';
 
+export 'package:sqflite/sqflite.dart' show ConflictAlgorithm;
+
 // TODO: Export any libraries intended for clients of this package.

@@ -1,3 +1,5 @@
+import 'package:cuid2/cuid2.dart';
+import 'package:uuid/uuid.dart';
 import 'package:xqflite/src/table.dart';
 
 import 'data_types.dart';
@@ -13,20 +15,56 @@ sealed class Column {
   static GenericColumn date(String name, {bool nullable = false}) => GenericColumn(name, DataType.date, nullable: nullable);
   static GenericColumn dateTime(String name, {bool nullable = false}) => GenericColumn(name, DataType.dateTime, nullable: nullable);
   static PrimaryKeyColumn primaryKey(String name) => PrimaryKeyColumn(name);
+  static PrimaryKeyCuidColumn primaryKeyCuid(String name) => PrimaryKeyCuidColumn(name);
+  static PrimaryKeyUuidColumn primaryKeyUuid(String name) => PrimaryKeyUuidColumn(name);
   static ReferenceColumn reference(String name, Table table, {bool nullable = false, CascadeOperation? onUpdate, CascadeOperation? onDelete}) =>
       ReferenceColumn(name, references: table, nullable: nullable, onDelete: onDelete, onUpdate: onUpdate);
 
   String toSql();
+
+  Object? defaultValueGetter() => null;
+}
+
+abstract interface class PrimaryKeyType {
+  SingleColumnKey toKey();
 }
 
 /// This creates a column which is primary key type integer
-final class PrimaryKeyColumn extends Column {
+final class PrimaryKeyColumn extends Column implements PrimaryKeyType {
   const PrimaryKeyColumn(super.name);
 
   @override
   String toSql() => '$name INTEGER PRIMARY KEY';
 
   SingleColumnKey toKey() => SingleColumnKey(this);
+}
+
+final class PrimaryKeyCuidColumn extends Column implements PrimaryKeyType {
+  const PrimaryKeyCuidColumn(super.name);
+
+  @override
+  String toSql() => '$name TEXT PRIMARY KEY';
+
+  SingleColumnKey toKey() => SingleColumnKey(this);
+
+  @override
+  String? defaultValueGetter() {
+    return cuid();
+  }
+}
+
+final class PrimaryKeyUuidColumn extends Column implements PrimaryKeyType {
+  const PrimaryKeyUuidColumn(super.name);
+
+  @override
+  String toSql() => '$name TEXT PRIMARY KEY';
+
+  SingleColumnKey toKey() => SingleColumnKey(this);
+
+  @override
+  String? defaultValueGetter() {
+    return Uuid().v8();
+  }
 }
 
 final class GenericColumn extends Column {

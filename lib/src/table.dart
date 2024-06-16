@@ -77,7 +77,7 @@ class Table {
     // List<Join>? childJoins,
     this.childJoins = const [],
     this.groupProperties = const [],
-  }) : primaryKey = columns.whereType<PrimaryKeyColumn>().firstOrNull?.toKey() ?? RowIdKey() {
+  }) : primaryKey = columns.whereType<PrimaryKeyType>().firstOrNull?.toKey() ?? RowIdKey() {
     switch (primaryKey) {
       case SingleColumnKey primaryKey:
         assert(columns.contains(primaryKey.column), 'Single Primary key must be subset of columns');

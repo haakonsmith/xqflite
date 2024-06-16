@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'lib/todo_page.dart';
+import 'todo_page.dart';
 
 void main() {
   runApp(const XqfliteExample());

@@ -3,11 +3,20 @@ import 'dart:async';
 import 'package:sqflite/sqflite.dart' as sqflite;
 import 'package:xqflite/xqflite.dart';
 
-typedef BatchResult = ({List<Table> updates, List<Object?> rawResult});
+typedef BatchResult = ({
+  List<Table> changedTables,
+  List<TableUpdate> tableUpdates,
+  List<TableDelete> tableDeletes,
+  List<TableInsert> tableInserts,
+  List<Object?> rawResult,
+});
 
 final class Batch {
   final sqflite.Batch batch;
-  final List<Table> _updates = [];
+  final List<Table> _tableChanges = [];
+  final List<TableUpdate> _updates = [];
+  final List<TableInsert> _inserts = [];
+  final List<TableDelete> _deletes = [];
 
   Batch(XqfliteDatabase database) : batch = database.getRawBatch();
 
@@ -18,14 +27,17 @@ final class Batch {
   Future<BatchResult> commit() async {
     return (
       rawResult: await batch.commit(),
-      updates: _updates,
+      changedTables: _tableChanges,
+      tableUpdates: _updates,
+      tableInserts: _inserts,
+      tableDeletes: _deletes,
     );
   }
 
   /// This executes raw sql on the batch
-  /// 
+  ///
   /// This is useful for things like `CREATE TABLE` or `DROP TABLE`
-  /// 
+  ///
   /// It does not update the table updates
   void execute(String sql, [List<Object?>? arguments]) async {
     batch.execute(sql, arguments);
@@ -34,19 +46,22 @@ final class Batch {
   void insert(Table table, Map<String, Object?> values) async {
     batch.insert(table.name, values);
 
-    _updates.add(table);
+    _tableChanges.add(table);
+    _inserts.add((table, values));
   }
 
   void delete(Table table, Query query) async {
     batch.delete(table.name, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
-    _updates.add(table);
+    _tableChanges.add(table);
+    _deletes.add((table, query));
   }
 
   void update(Table table, Map<String, Object?> values, Query query) async {
     batch.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
-    _updates.add(table);
+    _tableChanges.add(table);
+    _updates.add((table, query, values));
   }
 }
 

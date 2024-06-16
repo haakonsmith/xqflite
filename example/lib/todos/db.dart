@@ -42,11 +42,12 @@ extension TodoDatabase on XqfliteDatabase {
     final todos = Table.builder('todo') //
         .primaryKey('todo_id')
         .text('todo_name')
+        .text('todo_description')
         .build();
 
     final schema = Schema([todos]);
 
-    await open(schema);
+    await open(schema, dbPath: ':memory:');
   }
 
   DbTableWithConverter<Todo> get todos => tables['todo']!.withConverter(Todo.converter);
