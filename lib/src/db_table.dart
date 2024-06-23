@@ -26,10 +26,11 @@ class DbTable {
     return await database.delete(table, query);
   }
 
-  Future<int> insert(RawData value) async {
+  Future<int> insert(RawData value, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
     return await database.insert(
       table,
       table.columns.validateMapExcept(value),
+      conflictAlgorithm: conflictAlgorithm,
     );
   }
 
@@ -92,8 +93,8 @@ final class DbTableWithConverter<T> {
     return table.delete(query);
   }
 
-  Future<int> insert(T value) async {
-    return table.insert(converter.toDb(value));
+  Future<int> insert(T value, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
+    return table.insert(converter.toDb(value), conflictAlgorithm: conflictAlgorithm);
   }
 
   Future<int> update(T value, Query query) async {

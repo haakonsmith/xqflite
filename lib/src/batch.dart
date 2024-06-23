@@ -43,11 +43,11 @@ final class Batch {
     batch.execute(sql, arguments);
   }
 
-  void insert(Table table, Map<String, Object?> values) async {
+  void insert(Table table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
     batch.insert(table.name, values);
 
     _tableChanges.add(table);
-    _inserts.add((table, values));
+    _inserts.add((table, values, conflictAlgorithm));
   }
 
   void delete(Table table, Query query) async {

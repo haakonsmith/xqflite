@@ -1,6 +1,8 @@
 import 'package:test/test.dart';
 
+import 'package:sqflite/sqflite.dart' as sql;
 import 'package:xqflite/src/column.dart';
+import 'package:xqflite/src/exceptions.dart';
 import 'package:xqflite/xqflite.dart';
 
 import 'shared.dart';
@@ -310,6 +312,20 @@ void main() {
         {'artist_name': 'John', 'popularity': 5, 'artist_id': 1},
         {'artist_name': 'Bob', 'popularity': 3, 'artist_id': 3},
       ]);
+    });
+
+    testDb('insert with abort', (db) async {
+      await Database.instance.artists.insert(Artist(artistName: 'Artist', artistId: 1), conflictAlgorithm: ConflictAlgorithm.abort);
+
+      await expectLater(Database.instance.artists.insert(Artist(artistName: 'Artist', artistId: 1), conflictAlgorithm: ConflictAlgorithm.abort),
+          throwsA(isA<XqfliteGenericException>()));
+    });
+
+    testDb('insert with replace', (db) async {
+      await Database.instance.artists.insert(Artist(artistName: 'Artist', artistId: 1), conflictAlgorithm: ConflictAlgorithm.replace);
+      await Database.instance.artists.insert(Artist(artistName: 'Artist 2', artistId: 1), conflictAlgorithm: ConflictAlgorithm.replace);
+
+      expect(await Database.instance.artists.queryId(1), Artist(artistName: 'Artist 2', artistId: 1));
     });
   });
 }
