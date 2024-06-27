@@ -3,6 +3,7 @@ import 'package:test/test.dart';
 import 'package:sqflite/sqflite.dart' as sql;
 import 'package:xqflite/src/column.dart';
 import 'package:xqflite/src/exceptions.dart';
+import 'package:xqflite/src/table_builder.dart';
 import 'package:xqflite/xqflite.dart';
 
 import 'shared.dart';
@@ -311,6 +312,48 @@ void main() {
         {'artist_name': 'Jane', 'popularity': 8, 'artist_id': 2},
         {'artist_name': 'John', 'popularity': 5, 'artist_id': 1},
         {'artist_name': 'Bob', 'popularity': 3, 'artist_id': 3},
+      ]);
+    });
+
+    test('insert with triggers', () async {
+      final masterTable = Table.builder('master_table')
+          .integer('row_id') // Assume an artist has a popularity rating
+          .primaryKey('master_table_id')
+          .build();
+
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .integer('popularity') // Assume an artist has a popularity rating
+          .primaryKey('artist_id')
+          .trigger(
+              (table) => """INSERT INTO master_table (row_id) VALUES
+    (last_insert_rowid());""",
+              name: "update_master_table",
+              verb: TriggerVerb.insert,
+              temporality: TriggerTemporality.after)
+          .additionalSql((table) => """
+CREATE TRIGGER IF NOT EXISTS update_master_table AFTER INSERT ON ${table.name}
+BEGIN
+  INSERT INTO master_table (row_id) VALUES
+    (last_insert_rowid());
+END;
+          """)
+          .build();
+
+      final schema = Schema([artistsTable, masterTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artistId = await Database.instance.tables['artists']!.insert({
+        'artist_name': 'Bob',
+        'popularity': 3,
+      });
+      final result = await Database.instance.tables["master_table"]!.query(Query.all());
+
+      await Database.instance.close();
+
+      expect(result, [
+        {'row_id': artistId, 'master_table_id': 1}
       ]);
     });
 

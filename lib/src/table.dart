@@ -70,13 +70,14 @@ class Table {
   final PrimaryKey primaryKey;
   final List<String> groupProperties;
   final List<Join> childJoins;
+  final String additionalSql;
 
   Table({
     required this.columns,
     required this.name,
-    // List<Join>? childJoins,
     this.childJoins = const [],
     this.groupProperties = const [],
+    this.additionalSql = "",
   }) : primaryKey = columns.whereType<PrimaryKeyType>().firstOrNull?.toKey() ?? RowIdKey() {
     switch (primaryKey) {
       case SingleColumnKey primaryKey:
@@ -99,9 +100,6 @@ class Table {
   DbTable toDbTable(XqfliteDatabase database) => DbTable(database, this);
   Table innerJoin<T extends Table>(T joinee, Query on) =>
       Table(columns: columns, name: name, groupProperties: groupProperties, childJoins: [...childJoins, InnerJoin(on: on, joinee: joinee)]);
-  // FullOuterJoinTable fullOuterJoin(Table joinee, Query on) => FullOuterJoinTable(columns: columns, on: on, joinee: joinee, name: name);
-  // LeftJoinTable leftJoin(Table joinee, Query on) => LeftJoinTable(columns: columns, on: on, joinee: joinee, name: name);
-  // RightJoinTable rightJoin(Table joinee, Query on) => RightJoinTable(columns: columns, on: on, joinee: joinee, name: name);
 
   Table groupBy(List<String> groupProperties) => Table(columns: columns, name: name, groupProperties: groupProperties, childJoins: childJoins);
 
@@ -110,6 +108,8 @@ class Table {
       CREATE TABLE IF NOT EXISTS $name (
 ${columns.map((e) => '        ${e.toSql()}').join(",\n")}
       );
+
+$additionalSql
       ''';
   }
 
