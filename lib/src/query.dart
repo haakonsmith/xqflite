@@ -105,12 +105,42 @@ final class WhereClauseIn implements WhereClause {
   String toSql() => '${operator.sql} $column IN (${List.generate(count, (index) => "?").join(', ')})';
 
   @override
-  WhereClauseLike copyWith({
+  WhereClauseIn copyWith({
     BooleanOperator? operator,
+    int? count,
     String? column,
   }) {
-    return WhereClauseLike(
+    return WhereClauseIn(
       column ?? this.column,
+      count ?? this.count,
+      operator: operator ?? this.operator,
+    );
+  }
+}
+
+final class WhereClauseIsNull implements WhereClause {
+  @override
+  final BooleanOperator operator;
+
+  @override
+  final String column;
+
+  final bool isNull;
+
+  const WhereClauseIsNull(this.column, this.isNull, {this.operator = BooleanOperator.initial});
+
+  @override
+  String toSql() => '${operator.sql} $column IS ${!isNull ? 'NOT ' : ''}NULL';
+
+  @override
+  WhereClauseIsNull copyWith({
+    BooleanOperator? operator,
+    bool? isNull,
+    String? column,
+  }) {
+    return WhereClauseIsNull(
+      column ?? this.column,
+      isNull ?? this.isNull,
       operator: operator ?? this.operator,
     );
   }
@@ -175,6 +205,9 @@ final class Query extends PartialQuery {
   static Query greaterThanOrEqual<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.greaterThanOrEqual)], [value.toString()]);
   static Query lessThan<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.lessThan)], [value.toString()]);
   static Query lessThanOrEqual<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.lessThanOrEqual)], [value.toString()]);
+
+  static Query isNull(String column) => Query([WhereClauseIsNull(column, true)], []);
+  static Query isNotNull(String column) => Query([WhereClauseIsNull(column, false)], []);
 
   static QueryBuilder builder([List<String>? columns]) => QueryBuilder(columns: columns);
 
@@ -246,6 +279,9 @@ final class QueryBuilder {
   QueryOperatorBuilder lessThanOrEqual<T>(String column, T value) => QueryOperatorBuilder(this
     ..whereClauses.add(WhereClauseEquals(column, EqualityOperator.lessThanOrEqual))
     ..values.add(value.toString()));
+
+  QueryOperatorBuilder isNull(String column) => QueryOperatorBuilder(this..whereClauses.add(WhereClauseIsNull(column, true)));
+  QueryOperatorBuilder isNotNull(String column) => QueryOperatorBuilder(this..whereClauses.add(WhereClauseIsNull(column, false)));
 
   QueryBuilder orderBy(String column, {OrderByDirection direction = OrderByDirection.asc, bool nullsLast = false}) =>
       this..orderByClauses.add(OrderByClause(columnName: column, direction: direction, nullsLast: nullsLast));
