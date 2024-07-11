@@ -3,15 +3,15 @@ import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/xqflite.dart';
 import 'package:xqflite/src/validation.dart';
 
-class DbTable {
+class DbTable<KeyType> {
   final QueryExecutor database;
-  final Table table;
+  final Table<KeyType> table;
 
   const DbTable(this.database, this.table);
 
   DbTable innerJoin(DbTable joinee, Query on) => DbTable(database, table.innerJoin(joinee.table, on));
   DbTable groupBy(List<String> groupProperties) => DbTable(database, table.groupBy(groupProperties));
-  DbTableWithConverter<T> withConverter<T>(Converter<T> converter) => DbTableWithConverter(this, converter);
+  DbTableWithConverter<KeyType, T> withConverter<T>(Converter<T> converter) => DbTableWithConverter(this, converter);
 
   Future<List<RawData>> query(Query query) async {
     return await database.query(table, query);
@@ -26,10 +26,10 @@ class DbTable {
     return await database.delete(table, query);
   }
 
-  Future<int> insert(RawData value, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
+  Future<KeyType> insert(RawData value, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
     return await database.insert(
       table,
-      table.columns.validateMapExcept(value),
+      value,
       conflictAlgorithm: conflictAlgorithm,
     );
   }
@@ -47,29 +47,29 @@ class DbTable {
   }
 
   PartialQuery idQuery() => table.primaryKey.query;
-  Query single<I>(I id) => table.primaryKey.query.withValues([id.toString()]);
+  Query single(KeyType id) => table.primaryKey.query.withValues([id.toString()]);
 
-  Future<int> deleteId(int id) => delete(single(id));
-  Future<int> updateId(Map<String, Object?> values, int id) => update(values, single(id));
+  Future<int> deleteId(KeyType id) => delete(single(id));
+  Future<int> updateId(Map<String, Object?> values, KeyType id) => update(values, single(id));
 }
 
-final class DbTableWithConverter<T> {
+final class DbTableWithConverter<KeyType, T> {
   final Converter<T> converter;
-  final DbTable table;
+  final DbTable<KeyType> table;
 
   const DbTableWithConverter(this.table, this.converter);
 
   // DbTable leftJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.leftJoin(joinee.table, on);
   // DbTable rightJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.rightJoin(joinee.table, on);
   // DbTable fullOuterJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.fullOuterJoin(joinee.table, on);
-  DbTable innerJoin<K>(DbTableWithConverter<K> joinee, Query on) => table.innerJoin(joinee.table, on);
+  DbTable innerJoin<K>(DbTableWithConverter<KeyType, K> joinee, Query on) => table.innerJoin(joinee.table, on);
   String get tableName => table.table.name;
 
   T fromDb(RawData data) {
     try {
       return converter.fromDb(data);
-    } on TypeError catch (e) {
-      print('Converter Type Error found, raw data: $data\nerror: $e');
+    } on TypeError catch (e, stack) {
+      print('Converter Type Error found, raw data: $data\nerror: $e\nstack: $stack');
 
       rethrow;
     }
@@ -93,7 +93,7 @@ final class DbTableWithConverter<T> {
     return table.delete(query);
   }
 
-  Future<int> insert(T value, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
+  Future<KeyType> insert(T value, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
     return table.insert(converter.toDb(value), conflictAlgorithm: conflictAlgorithm);
   }
 
@@ -108,9 +108,9 @@ final class DbTableWithConverter<T> {
   }
 
   PartialQuery idQuery() => table.idQuery();
-  Query single<I>(I id) => table.single(id);
+  Query single(KeyType id) => table.single(id);
 
-  Future<T?> queryId<I>(I id) => query(single(id)).then((value) => value.firstOrNull);
-  Future<int> deleteId<I>(I id) => delete(single(id));
-  Future<int> updateId<I>(T value, I id) => update(value, single(id));
+  Future<T?> queryId(KeyType id) => query(single(id)).then((value) => value.firstOrNull);
+  Future<int> deleteId(KeyType id) => delete(single(id));
+  Future<int> updateId(T value, KeyType id) => update(value, single(id));
 }

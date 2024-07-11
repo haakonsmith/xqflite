@@ -22,7 +22,7 @@ final class Batch {
 
   BatchTable withTable(Table table) => BatchTable(this, table);
   BatchTableWithConverter<T> withTableAndConverter<T>(Table table, Converter<T> converter) => withTable(table).withConverter(converter);
-  BatchTableWithConverter<T> bind<T>(DbTableWithConverter<T> table) => withTable(table.table.table).withConverter(table.converter);
+  BatchTableWithConverter<T> bind<Key_, T>(DbTableWithConverter<Key_, T> table) => withTable(table.table.table).withConverter(table.converter);
 
   Future<BatchResult> commit() async {
     return (
@@ -107,7 +107,7 @@ final class BatchTableWithConverter<T> {
     batch.update(converter.toDb(value), query);
   }
 
-  void updateId(T value, int id) {
+  void updateId<K>(T value, K id) {
     batch.update(
         converter.toDb(value),
         batch.table.primaryKey.query.withValues([
@@ -115,7 +115,7 @@ final class BatchTableWithConverter<T> {
         ]));
   }
 
-  void deleteId(int id) {
+  void deleteId<K>(K id) {
     batch.delete(batch.table.primaryKey.query.withValues([
       id.toString(),
     ]));

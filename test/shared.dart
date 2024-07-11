@@ -8,14 +8,18 @@ final class Database extends XqfliteDatabase {
   static final Database _instance = Database._();
   static Database get instance => _instance;
 
-  DbTableWithConverter<Artist> get artists => tables['artists']!.withConverter((
+  // DbTableWithConverter<int, Artist> get artists => (tables['artists']! as DbTable<int>).withConverter<Artist>((
+  //       toDb: (artist) => artist.toMap(),
+  //       fromDb: Artist.fromMap,
+  //     ));
+  DbTableWithConverter<int, Artist> get artists => getTableWithConverter('artists', (
         toDb: (artist) => artist.toMap(),
         fromDb: Artist.fromMap,
       ));
-  DbTableWithConverter<Album> get albums => tables['albums']!.withConverter((
+  DbTableWithConverter<int, Album> get albums => tables['albums']!.withConverter<Album>((
         toDb: (album) => album.toMap(),
         fromDb: Album.fromMap,
-      ));
+      )) as DbTableWithConverter<int, Album>;
 }
 
 class Artist {
@@ -130,13 +134,13 @@ void testDb(
     final artistsTable = Table.builder('artists')
         .text('artist_name')
         .primaryKey('artist_id') //
-        .build();
+        .build<int>();
 
     final albumsTable = Table.builder('albums') //
         .text('album_name')
         .primaryKey('album_id')
         .reference('artist_id', artistsTable)
-        .build();
+        .build<int>();
 
     final schema = Schema([artistsTable, albumsTable], migrations: migrations);
 

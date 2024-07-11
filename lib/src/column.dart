@@ -25,12 +25,12 @@ sealed class Column {
   Object? defaultValueGetter() => null;
 }
 
-abstract interface class PrimaryKeyType {
+abstract interface class IntoPrimaryKey {
   SingleColumnKey toKey();
 }
 
 /// This creates a column which is primary key type integer
-final class PrimaryKeyColumn extends Column implements PrimaryKeyType {
+final class PrimaryKeyColumn extends Column implements IntoPrimaryKey {
   const PrimaryKeyColumn(super.name);
 
   @override
@@ -39,11 +39,11 @@ final class PrimaryKeyColumn extends Column implements PrimaryKeyType {
   SingleColumnKey toKey() => SingleColumnKey(this);
 }
 
-final class PrimaryKeyCuidColumn extends Column implements PrimaryKeyType {
+final class PrimaryKeyCuidColumn extends Column implements IntoPrimaryKey {
   const PrimaryKeyCuidColumn(super.name);
 
   @override
-  String toSql() => '$name TEXT PRIMARY KEY';
+  String toSql() => '$name TEXT PRIMARY KEY NOT NULL';
 
   SingleColumnKey toKey() => SingleColumnKey(this);
 
@@ -53,11 +53,11 @@ final class PrimaryKeyCuidColumn extends Column implements PrimaryKeyType {
   }
 }
 
-final class PrimaryKeyUuidColumn extends Column implements PrimaryKeyType {
+final class PrimaryKeyUuidColumn extends Column implements IntoPrimaryKey {
   const PrimaryKeyUuidColumn(super.name);
 
   @override
-  String toSql() => '$name TEXT PRIMARY KEY';
+  String toSql() => '$name TEXT PRIMARY KEY NOT NULL';
 
   SingleColumnKey toKey() => SingleColumnKey(this);
 
@@ -104,12 +104,13 @@ final class ReferenceColumn extends Column {
   final bool nullable;
   final CascadeOperation? onDelete;
   final CascadeOperation? onUpdate;
+  final DataAffinity type;
 
-  const ReferenceColumn(super.name, {required this.references, this.nullable = false, this.onUpdate, this.onDelete});
+  const ReferenceColumn(super.name, {required this.references, this.nullable = false, this.onUpdate, this.onDelete, this.type = DataAffinity.integer});
 
   @override
   String toSql() {
-    final buffer = StringBuffer('$name INTEGER REFERENCES ${references.name} (${references.primaryKey.toSqlList()})');
+    final buffer = StringBuffer('$name ${type.name} REFERENCES ${references.name} (${references.primaryKey.toSqlList()})');
 
     if (onDelete != null) {
       buffer.write(" ON DELETE ");

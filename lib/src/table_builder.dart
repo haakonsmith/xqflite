@@ -1,5 +1,6 @@
 import 'package:xqflite/src/column.dart';
 import 'package:xqflite/src/table.dart';
+import 'package:xqflite/src/utils.dart';
 
 import 'data_types.dart';
 
@@ -56,8 +57,9 @@ final class TableBuilder {
   TableBuilder primaryKey(String name) => this..columns.add(PrimaryKeyColumn(name));
   TableBuilder primaryKeyCuid(String name) => this..columns.add(PrimaryKeyCuidColumn(name));
   TableBuilder primaryKeyUuid(String name) => this..columns.add(PrimaryKeyUuidColumn(name));
-  TableBuilder reference(String name, Table table, {bool nullable = false, CascadeOperation? onUpdate, CascadeOperation? onDelete}) =>
-      this..columns.add(ReferenceColumn(name, references: table, nullable: nullable, onDelete: onDelete, onUpdate: onUpdate));
+  TableBuilder reference(String name, Table table,
+          {bool nullable = false, CascadeOperation? onUpdate, CascadeOperation? onDelete, DataAffinity type = DataAffinity.integer}) =>
+      this..columns.add(ReferenceColumn(name, references: table, nullable: nullable, onDelete: onDelete, onUpdate: onUpdate, type: type));
 
   /// This additional sql will get executed immediately after table creation,
   /// This is useful for triggers, keep in mind all triggers written like this should have "IF NOT EXISTS" as the will get executed regardless
@@ -72,13 +74,17 @@ final class TableBuilder {
   }) =>
       this..sqlBuilders.add((table) => TriggerBuilder(table.name, name, verb: verb, temporality: temporality).sql(sql(table)));
 
-  Table build() {
+  /// D
+  Table<Key> build<Key>({bool withoutRowId = false}) {
     final table = Table(name: tableName, columns: columns);
 
-    return Table(
+    // assert(Key != dynamic, "Hi, sorry. I wish I could've told you this sooner (at compile time), but here we are.\nIt's not me it's you, you've passed in the wrong type... Sorry...\nBasically, just give me a concrete type here and all will be well");
+
+    return Table<Key>(
       name: tableName,
       columns: columns,
       childJoins: [],
+      withoutRowId: withoutRowId,
       additionalSql: sqlBuilders.map((f) => f(table)).join("\n"),
     );
   }

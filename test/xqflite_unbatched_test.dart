@@ -84,19 +84,19 @@ void main() {
       final artists = Table.builder('artists') //
           .text('artist_name')
           .primaryKey('artist_id')
-          .build();
+          .build<int>();
 
       final albums = Table.builder('albums') //
           .text('album_name')
           .primaryKey('album_id')
           .reference('artist_id', artists)
-          .build();
+          .build<int>();
 
       final schema = Schema([albums, artists]);
 
       await Database.instance.open(schema, dbPath: ':memory:');
 
-      final newArtistId = await Database.instance.tables['artists']!.insert({
+      final newArtistId = await Database.instance.getTable<int>('artists').insert({
         'artist_name': 'Bill',
       });
 
@@ -369,6 +369,36 @@ END;
       await Database.instance.artists.insert(Artist(artistName: 'Artist 2', artistId: 1), conflictAlgorithm: ConflictAlgorithm.replace);
 
       expect(await Database.instance.artists.queryId(1), Artist(artistName: 'Artist 2', artistId: 1));
+    });
+
+    test('insert string id', () async {
+      final masterTable = Table.builder('master_table')
+          .integer('row_id') // Assume an artist has a popularity rating
+          .primaryKey('master_table_id')
+          .build<String>(withoutRowId: true);
+
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .integer('popularity') // Assume an artist has a popularity rating
+          .primaryKeyCuid('artist_id')
+          .build<String>(withoutRowId: true);
+
+      final schema = Schema([artistsTable, masterTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artistId = await Database.instance.tables['artists']!.insert({
+        'artist_name': 'Bob',
+        'popularity': 3,
+      });
+
+      final result = await Database.instance.tables['artists']!.query(Query.all());
+
+      await Database.instance.close();
+
+      expect(result, [
+        {'artist_name': 'Bob', 'popularity': 3, 'artist_id': artistId}
+      ]);
     });
   });
 }

@@ -39,6 +39,20 @@ final class InvalidTypeError extends ValidationError {
 }
 
 extension Validation on List<Column> {
+  Map<String, Object?> preprocessMap(Map<String, Object?> values) {
+    // return {for (final column in this) column.name: values[column.name] ?? column.defaultValueGetter()};
+
+    final copiedValues = Map.of(values);
+
+    for (final column in this) {
+      final defaultValue = column.defaultValueGetter();
+
+      if (defaultValue != null) copiedValues[column.name] ??= defaultValue;
+    }
+
+    return copiedValues;
+  }
+
   Map<String, Object?> validateMapExcept(Map<String, Object?> values) {
     validateMap(values)?.throwSelf();
 
@@ -68,8 +82,6 @@ extension Validation on List<Column> {
         PrimaryKeyCuidColumn _ => true,
         PrimaryKeyUuidColumn _ => true,
       };
-
-      value ??= column.defaultValueGetter();
 
       if (value == null && !nullable) return NullableError(keyName: column.name, column: column);
 
