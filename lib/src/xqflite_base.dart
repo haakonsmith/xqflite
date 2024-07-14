@@ -197,7 +197,8 @@ class XqfliteDatabase implements QueryExecutor {
       _insertController.add((table, values, conflictAlgorithm));
 
       return newKey.first.values.first as KeyType;
-    } catch (e) {
+    } catch (e, stack) {
+      print(stack);
       throw XqfliteGenericException(e);
     }
   }

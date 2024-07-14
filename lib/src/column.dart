@@ -9,11 +9,15 @@ sealed class Column {
 
   const Column(this.name);
 
-  static TextColumn text(String name, {bool nullable = false, String? defaultValue}) => TextColumn(name, nullable: nullable, defaultValue: defaultValue);
+  static TextColumn text(String name, {bool nullable = false, String? defaultValue, bool unique = false}) =>
+      TextColumn(name, nullable: nullable, defaultValue: defaultValue, unique: unique);
   static JsonColumn json(String name, {bool nullable = false}) => JsonColumn(name, nullable: nullable);
-  static GenericColumn integer(String name, {bool nullable = false}) => GenericColumn(name, DataType.integer, nullable: nullable);
-  static GenericColumn date(String name, {bool nullable = false}) => GenericColumn(name, DataType.date, nullable: nullable);
-  static GenericColumn dateTime(String name, {bool nullable = false}) => GenericColumn(name, DataType.dateTime, nullable: nullable);
+  static GenericColumn integer(String name, {bool nullable = false, bool unique = false}) =>
+      GenericColumn(name, DataType.integer, nullable: nullable, unique: unique);
+  static GenericColumn date(String name, {bool nullable = false, bool unique = false}) =>
+      GenericColumn(name, DataType.date, nullable: nullable, unique: unique);
+  static GenericColumn dateTime(String name, {bool nullable = false, bool unique = false}) =>
+      GenericColumn(name, DataType.dateTime, nullable: nullable, unique: unique);
   static PrimaryKeyColumn primaryKey(String name) => PrimaryKeyColumn(name);
   static PrimaryKeyCuidColumn primaryKeyCuid(String name) => PrimaryKeyCuidColumn(name);
   static PrimaryKeyUuidColumn primaryKeyUuid(String name) => PrimaryKeyUuidColumn(name);
@@ -70,21 +74,23 @@ final class PrimaryKeyUuidColumn extends Column implements IntoPrimaryKey {
 final class GenericColumn extends Column {
   final DataType dataType;
   final bool nullable;
+  final bool unique;
 
-  const GenericColumn(super.name, this.dataType, {this.nullable = false});
+  const GenericColumn(super.name, this.dataType, {this.nullable = false, this.unique = false});
 
   @override
-  String toSql() => '$name ${dataType.name.toUpperCase()}${nullable ? '' : ' NOT NULL'}';
+  String toSql() => '$name ${dataType.name.toUpperCase()}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
 }
 
 final class TextColumn extends Column {
   final bool nullable;
+  final bool unique;
   final String? defaultValue;
 
-  const TextColumn(super.name, {this.nullable = false, this.defaultValue});
+  const TextColumn(super.name, {this.nullable = false, this.defaultValue, this.unique = false});
 
   @override
-  String toSql() => '$name TEXT${defaultValue == null ? '' : ' DEFAULT "$defaultValue"'}${nullable ? '' : ' NOT NULL'}';
+  String toSql() => '$name TEXT${defaultValue == null ? '' : ' DEFAULT "$defaultValue"'}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
 }
 
 /// https://www.sqlite.org/foreignkeys.html

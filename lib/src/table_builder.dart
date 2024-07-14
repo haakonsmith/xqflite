@@ -47,13 +47,13 @@ final class TableBuilder {
 
   TableBuilder(this.tableName);
 
-  TableBuilder text(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.text, nullable: nullable));
-  TableBuilder integer(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.integer, nullable: nullable));
-  TableBuilder bytes(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.bytes, nullable: nullable));
-  TableBuilder real(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.real, nullable: nullable));
-  TableBuilder boolean(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.boolean, nullable: nullable));
+  TableBuilder text(String name, {bool nullable = false, bool unique = false}) => this..columns.add(GenericColumn(name, DataType.text, nullable: nullable, unique: unique));
+  TableBuilder integer(String name, {bool nullable = false, bool unique = false}) => this..columns.add(GenericColumn(name, DataType.integer, nullable: nullable, unique: unique));
+  TableBuilder bytes(String name, {bool nullable = false, bool unique = false}) => this..columns.add(GenericColumn(name, DataType.bytes, nullable: nullable, unique: unique));
+  TableBuilder real(String name, {bool nullable = false, bool unique = false}) => this..columns.add(GenericColumn(name, DataType.real, nullable: nullable, unique: unique));
+  TableBuilder boolean(String name, {bool nullable = false, bool unique = false}) => this..columns.add(GenericColumn(name, DataType.boolean, nullable: nullable, unique: unique));
 
-  TableBuilder dateTime(String name, {bool nullable = false}) => this..columns.add(GenericColumn(name, DataType.dateTime, nullable: nullable));
+  TableBuilder dateTime(String name, {bool nullable = false, bool unique = false}) => this..columns.add(GenericColumn(name, DataType.dateTime, nullable: nullable, unique: unique));
   TableBuilder primaryKey(String name) => this..columns.add(PrimaryKeyColumn(name));
   TableBuilder primaryKeyCuid(String name) => this..columns.add(PrimaryKeyCuidColumn(name));
   TableBuilder primaryKeyUuid(String name) => this..columns.add(PrimaryKeyUuidColumn(name));

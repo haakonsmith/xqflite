@@ -66,7 +66,7 @@ extension Validation on List<Column> {
       final dataType = switch (column) {
         PrimaryKeyColumn _ => DataType.integer,
         JsonColumn _ => DataType.json,
-        ReferenceColumn _ => DataType.integer,
+        ReferenceColumn col => col.type,
         TextColumn _ => DataType.text,
         GenericColumn column => column.dataType,
         PrimaryKeyCuidColumn _ => DataType.text,
