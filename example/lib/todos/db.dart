@@ -50,5 +50,5 @@ extension TodoDatabase on XqfliteDatabase {
     await open(schema, dbPath: ':memory:');
   }
 
-  DbTableWithConverter<Todo> get todos => tables['todo']!.withConverter(Todo.converter);
+  DbTableWithConverter<int, Todo> get todos => (tables['todo']! as DbTable<int>).withConverter(Todo.converter);
 }

@@ -64,13 +64,14 @@ final class InnerJoin extends Join {
   String toSql() => "INNER JOIN ${joinee.tableName} ON ${on.whereStringWithValues()}";
 }
 
-class Table {
+class Table<KeyType> {
   final String name;
   final List<Column> columns;
   final PrimaryKey primaryKey;
   final List<String> groupProperties;
   final List<Join> childJoins;
   final String additionalSql;
+  final bool withoutRowId;
 
   Table({
     required this.columns,
@@ -78,7 +79,8 @@ class Table {
     this.childJoins = const [],
     this.groupProperties = const [],
     this.additionalSql = "",
-  }) : primaryKey = columns.whereType<PrimaryKeyType>().firstOrNull?.toKey() ?? RowIdKey() {
+    this.withoutRowId = false,
+  }) : primaryKey = columns.whereType<IntoPrimaryKey>().firstOrNull?.toKey() ?? RowIdKey() {
     switch (primaryKey) {
       case SingleColumnKey primaryKey:
         assert(columns.contains(primaryKey.column), 'Single Primary key must be subset of columns');
@@ -97,7 +99,7 @@ class Table {
 
   bool get hasReferences => columns.any((column) => column is ReferenceColumn);
 
-  DbTable toDbTable(XqfliteDatabase database) => DbTable(database, this);
+  DbTable<KeyType> toDbTable(XqfliteDatabase database) => DbTable(database, this);
   Table innerJoin<T extends Table>(T joinee, Query on) =>
       Table(columns: columns, name: name, groupProperties: groupProperties, childJoins: [...childJoins, InnerJoin(on: on, joinee: joinee)]);
 
@@ -107,7 +109,7 @@ class Table {
     return '''
       CREATE TABLE IF NOT EXISTS $name (
 ${columns.map((e) => '        ${e.toSql()}').join(",\n")}
-      );
+      )${withoutRowId ? ' WITHOUT ROWID' : ''};
 
 $additionalSql
       ''';
@@ -150,6 +152,24 @@ $additionalSql
     // }
 
     return buffer.toString().trim();
+  }
+
+  /// This builds an insert statement
+  /// It takes in the values as a list to assert the order. If not provided order cannot be guaranteed
+  String buildInsertStatement({Iterable<String>? columnNames, ConflictAlgorithm onConflict = ConflictAlgorithm.abort}) {
+    final buffer = StringBuffer('INSERT OR ${onConflict.name} INTO $tableName\n');
+
+    buffer.write("(");
+    buffer.write((columnNames ?? columns.map((e) => e.name)).join(", "));
+    buffer.writeln(")");
+
+    buffer.write("VALUES (");
+    buffer.write((columnNames?.map((e) => "?") ?? columns.map((e) => "?")).join(", "));
+    buffer.writeln(")");
+
+    buffer.write("RETURNING ${primaryKey.toSqlList()}");
+
+    return buffer.toString();
   }
 
   String buildInnerJoins(Table parentTable) {

@@ -20,8 +20,12 @@
     },
     "peacock.color": "#67057b",
     "cSpell.words": [
+        "cuid",
+        "foreignkeys",
+        "joinee",
         "Rowid",
         "sqflite",
+        "writeln",
         "xqflite"
     ]
 }

@@ -1,15 +1,13 @@
 import 'package:test/test.dart';
 
-import 'package:sqflite/sqflite.dart' as sql;
 import 'package:xqflite/src/column.dart';
 import 'package:xqflite/src/exceptions.dart';
-import 'package:xqflite/src/table_builder.dart';
 import 'package:xqflite/xqflite.dart';
 
 import 'shared.dart';
 
 void main() {
-  group('unbatched db tests', () {
+  group('un-batched db tests', () {
     test('double inner join', () async {
       final column = Column.text('test_col', nullable: true);
       final column2 = Column.integer('test_col2');
@@ -96,7 +94,7 @@ void main() {
 
       await Database.instance.open(schema, dbPath: ':memory:');
 
-      final newArtistId = await Database.instance.tables['artists']!.insert({
+      final newArtistId = await Database.instance.getTable<int>('artists').insert({
         'artist_name': 'Bill',
       });
 
@@ -160,7 +158,7 @@ void main() {
 
       await Database.instance.open(schema, dbPath: ':memory:');
 
-      final artist = Artist(artistName: 'Phill');
+      final artist = Artist(artistName: 'Phil');
       final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
 
       await artists.insert(artist);
@@ -169,7 +167,7 @@ void main() {
 
       await Database.instance.close();
 
-      expect(result, [Artist(artistName: 'Phill', artistId: 1)]);
+      expect(result, [Artist(artistName: 'Phil', artistId: 1)]);
     });
 
     test('update', () async {
@@ -182,7 +180,7 @@ void main() {
 
       await Database.instance.open(schema, dbPath: ':memory:');
 
-      final artist = Artist(artistName: 'Phill');
+      final artist = Artist(artistName: 'Phil');
       final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
 
       final artistId = await artists.insert(artist);
@@ -250,7 +248,7 @@ void main() {
 
       await Database.instance.open(schema, dbPath: ':memory:');
 
-      final artist = Artist(artistName: 'Phill');
+      final artist = Artist(artistName: 'Phil');
       final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
 
       final artistId = await artists.insert(artist);
@@ -369,6 +367,109 @@ END;
       await Database.instance.artists.insert(Artist(artistName: 'Artist 2', artistId: 1), conflictAlgorithm: ConflictAlgorithm.replace);
 
       expect(await Database.instance.artists.queryId(1), Artist(artistName: 'Artist 2', artistId: 1));
+    });
+
+    test('insert with replace on unique column', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name', unique: true)
+          .primaryKey('artist_id') //
+          .build();
+
+      await Database.instance.open(Schema([artistsTable]), dbPath: ':memory:');
+
+      await Database.instance.artists.insert(Artist(artistName: 'Artist'), conflictAlgorithm: ConflictAlgorithm.replace);
+      await Database.instance.artists.insert(Artist(artistName: 'Artist 2'), conflictAlgorithm: ConflictAlgorithm.replace);
+      await Database.instance.artists.insert(Artist(artistName: 'Artist 2'), conflictAlgorithm: ConflictAlgorithm.replace);
+      await Database.instance.artists.insert(Artist(artistName: 'Artist 2'), conflictAlgorithm: ConflictAlgorithm.replace);
+
+      expect(await Database.instance.artists.query(Query.all()), [
+        Artist(artistName: 'Artist', artistId: 1),
+        Artist(artistName: 'Artist 2', artistId: 4),
+      ]);
+
+      await Database.instance.close();
+    });
+
+    test('insert string id', () async {
+      final masterTable = Table.builder('master_table')
+          .integer('row_id') // Assume an artist has a popularity rating
+          .primaryKey('master_table_id')
+          .build(withoutRowId: true);
+
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .integer('popularity') // Assume an artist has a popularity rating
+          .primaryKeyCuid('artist_id')
+          .build(withoutRowId: true);
+
+      final schema = Schema([artistsTable, masterTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artistId = await Database.instance.tables['artists']!.insert({
+        'artist_name': 'Bob',
+        'popularity': 3,
+      });
+
+      final result = await Database.instance.tables['artists']!.query(Query.all());
+
+      await Database.instance.close();
+
+      expect(result, [
+        {'artist_name': 'Bob', 'popularity': 3, 'artist_id': artistId}
+      ]);
+    });
+
+    test('insert with null value', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .integer('popularity', nullable: true) // Assume an artist has a popularity rating
+          .primaryKeyCuid('artist_id')
+          .build(withoutRowId: true);
+
+      final schema = Schema([artistsTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artistId = await Database.instance.tables['artists']!.insert({
+        'artist_name': 'Bob',
+        'popularity': null,
+      });
+
+      final result = await Database.instance.tables['artists']!.query(Query.all());
+
+      await Database.instance.close();
+
+      expect(result, [
+        {'artist_name': 'Bob', 'popularity': null, 'artist_id': artistId}
+      ]);
+    });
+
+    test('update with null value', () async {
+      final artistsTable = Table.builder('artists')
+          .text('artist_name')
+          .integer('popularity', nullable: true) // Assume an artist has a popularity rating
+          .primaryKeyCuid('artist_id')
+          .build(withoutRowId: true);
+
+      final schema = Schema([artistsTable]);
+
+      await Database.instance.open(schema, dbPath: ':memory:');
+
+      final artistId = await Database.instance.tables['artists']!.insert({
+        'artist_name': 'Bob',
+        'popularity': 12,
+      });
+
+      await Database.instance.tables['artists']!.updateId({'popularity': null}, artistId);
+
+      final result = await Database.instance.tables['artists']!.query(Query.all());
+
+      await Database.instance.close();
+
+      expect(result, [
+        {'artist_name': 'Bob', 'popularity': null, 'artist_id': artistId}
+      ]);
     });
   });
 }

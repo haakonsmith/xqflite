@@ -9,11 +9,15 @@ sealed class Column {
 
   const Column(this.name);
 
-  static TextColumn text(String name, {bool nullable = false, String? defaultValue}) => TextColumn(name, nullable: nullable, defaultValue: defaultValue);
+  static TextColumn text(String name, {bool nullable = false, String? defaultValue, bool unique = false}) =>
+      TextColumn(name, nullable: nullable, defaultValue: defaultValue, unique: unique);
   static JsonColumn json(String name, {bool nullable = false}) => JsonColumn(name, nullable: nullable);
-  static GenericColumn integer(String name, {bool nullable = false}) => GenericColumn(name, DataType.integer, nullable: nullable);
-  static GenericColumn date(String name, {bool nullable = false}) => GenericColumn(name, DataType.date, nullable: nullable);
-  static GenericColumn dateTime(String name, {bool nullable = false}) => GenericColumn(name, DataType.dateTime, nullable: nullable);
+  static GenericColumn integer(String name, {bool nullable = false, bool unique = false}) =>
+      GenericColumn(name, DataType.integer, nullable: nullable, unique: unique);
+  static GenericColumn date(String name, {bool nullable = false, bool unique = false}) =>
+      GenericColumn(name, DataType.date, nullable: nullable, unique: unique);
+  static GenericColumn dateTime(String name, {bool nullable = false, bool unique = false}) =>
+      GenericColumn(name, DataType.dateTime, nullable: nullable, unique: unique);
   static PrimaryKeyColumn primaryKey(String name) => PrimaryKeyColumn(name);
   static PrimaryKeyCuidColumn primaryKeyCuid(String name) => PrimaryKeyCuidColumn(name);
   static PrimaryKeyUuidColumn primaryKeyUuid(String name) => PrimaryKeyUuidColumn(name);
@@ -25,26 +29,28 @@ sealed class Column {
   Object? defaultValueGetter() => null;
 }
 
-abstract interface class PrimaryKeyType {
+abstract interface class IntoPrimaryKey {
   SingleColumnKey toKey();
 }
 
 /// This creates a column which is primary key type integer
-final class PrimaryKeyColumn extends Column implements PrimaryKeyType {
+final class PrimaryKeyColumn extends Column implements IntoPrimaryKey {
   const PrimaryKeyColumn(super.name);
 
   @override
   String toSql() => '$name INTEGER PRIMARY KEY';
 
+  @override
   SingleColumnKey toKey() => SingleColumnKey(this);
 }
 
-final class PrimaryKeyCuidColumn extends Column implements PrimaryKeyType {
+final class PrimaryKeyCuidColumn extends Column implements IntoPrimaryKey {
   const PrimaryKeyCuidColumn(super.name);
 
   @override
-  String toSql() => '$name TEXT PRIMARY KEY';
+  String toSql() => '$name TEXT PRIMARY KEY NOT NULL';
 
+  @override
   SingleColumnKey toKey() => SingleColumnKey(this);
 
   @override
@@ -53,12 +59,13 @@ final class PrimaryKeyCuidColumn extends Column implements PrimaryKeyType {
   }
 }
 
-final class PrimaryKeyUuidColumn extends Column implements PrimaryKeyType {
+final class PrimaryKeyUuidColumn extends Column implements IntoPrimaryKey {
   const PrimaryKeyUuidColumn(super.name);
 
   @override
-  String toSql() => '$name TEXT PRIMARY KEY';
+  String toSql() => '$name TEXT PRIMARY KEY NOT NULL';
 
+  @override
   SingleColumnKey toKey() => SingleColumnKey(this);
 
   @override
@@ -70,21 +77,23 @@ final class PrimaryKeyUuidColumn extends Column implements PrimaryKeyType {
 final class GenericColumn extends Column {
   final DataType dataType;
   final bool nullable;
+  final bool unique;
 
-  const GenericColumn(super.name, this.dataType, {this.nullable = false});
+  const GenericColumn(super.name, this.dataType, {this.nullable = false, this.unique = false});
 
   @override
-  String toSql() => '$name ${dataType.name.toUpperCase()}${nullable ? '' : ' NOT NULL'}';
+  String toSql() => '$name ${dataType.name.toUpperCase()}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
 }
 
 final class TextColumn extends Column {
   final bool nullable;
+  final bool unique;
   final String? defaultValue;
 
-  const TextColumn(super.name, {this.nullable = false, this.defaultValue});
+  const TextColumn(super.name, {this.nullable = false, this.defaultValue, this.unique = false});
 
   @override
-  String toSql() => '$name TEXT${defaultValue == null ? '' : ' DEFAULT "$defaultValue"'}${nullable ? '' : ' NOT NULL'}';
+  String toSql() => '$name TEXT${defaultValue == null ? '' : ' DEFAULT "$defaultValue"'}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
 }
 
 /// https://www.sqlite.org/foreignkeys.html
@@ -104,12 +113,13 @@ final class ReferenceColumn extends Column {
   final bool nullable;
   final CascadeOperation? onDelete;
   final CascadeOperation? onUpdate;
+  final DataAffinity type;
 
-  const ReferenceColumn(super.name, {required this.references, this.nullable = false, this.onUpdate, this.onDelete});
+  const ReferenceColumn(super.name, {required this.references, this.nullable = false, this.onUpdate, this.onDelete, this.type = DataAffinity.integer});
 
   @override
   String toSql() {
-    final buffer = StringBuffer('$name INTEGER REFERENCES ${references.name} (${references.primaryKey.toSqlList()})');
+    final buffer = StringBuffer('$name ${type.name} REFERENCES ${references.name} (${references.primaryKey.toSqlList()})');
 
     if (onDelete != null) {
       buffer.write(" ON DELETE ");

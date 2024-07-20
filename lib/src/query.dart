@@ -1,5 +1,21 @@
 import 'package:collection/collection.dart';
 
+enum ConflictAlgorithm {
+  /// This will replace the offending data
+  ///
+  /// When a UNIQUE or PRIMARY KEY constraint violation occurs, the REPLACE algorithm deletes pre-existing rows that are causing the constraint violation prior to inserting or updating the current row and the command continues executing normally. If a NOT NULL constraint violation occurs, the REPLACE conflict resolution replaces the NULL value with the default value for that column, or if the column has no default value, then the ABORT algorithm is used. If a CHECK constraint or foreign key constraint violation occurs, the REPLACE conflict resolution algorithm works like ABORT.
+  ///
+  /// When the REPLACE conflict resolution strategy deletes rows in order to satisfy a constraint, delete triggers fire if and only if recursive triggers are enabled.
+  ///
+  /// The update hook is not invoked for rows that are deleted by the REPLACE conflict resolution strategy. Nor does REPLACE increment the change counter. The exceptional behaviors defined in this paragraph might change in a future release.
+  replace,
+
+  /// This is the default behaviour
+  ///
+  /// When an applicable constraint violation occurs, the ABORT resolution algorithm aborts the current SQL statement with an SQLITE_CONSTRAINT error and backs out any changes made by the current SQL statement; but changes caused by prior SQL statements within the same transaction are preserved and the transaction remains active. This is the default behavior and the behavior specified by the SQL standard.
+  abort
+}
+
 enum EqualityOperator {
   equals('='),
   notEquals('!='),
@@ -193,6 +209,7 @@ final class Query extends PartialQuery {
   const Query.all()
       : values = const [],
         super(const []);
+  static Query rowId(int value) => Query([WhereClauseEquals('rowid', EqualityOperator.equals)], [value.toString()]);
   static Query equals<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.equals)], [value.toString()]);
   static Query notEquals<T>(String column, T value) => Query([WhereClauseEquals(column, EqualityOperator.notEquals)], [value.toString()]);
 

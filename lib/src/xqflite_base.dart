@@ -7,30 +7,8 @@ import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/src/column.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;
 import 'package:xqflite/src/exceptions.dart';
+import 'package:xqflite/src/validation.dart';
 import 'package:xqflite/xqflite.dart';
-
-enum ConflictAlgorithm {
-  /// This will replace the offending data
-  ///
-  /// When a UNIQUE or PRIMARY KEY constraint violation occurs, the REPLACE algorithm deletes pre-existing rows that are causing the constraint violation prior to inserting or updating the current row and the command continues executing normally. If a NOT NULL constraint violation occurs, the REPLACE conflict resolution replaces the NULL value with the default value for that column, or if the column has no default value, then the ABORT algorithm is used. If a CHECK constraint or foreign key constraint violation occurs, the REPLACE conflict resolution algorithm works like ABORT.
-  ///
-  /// When the REPLACE conflict resolution strategy deletes rows in order to satisfy a constraint, delete triggers fire if and only if recursive triggers are enabled.
-  ///
-  /// The update hook is not invoked for rows that are deleted by the REPLACE conflict resolution strategy. Nor does REPLACE increment the change counter. The exceptional behaviors defined in this paragraph might change in a future release.
-  replace,
-
-  /// This is the default behaviour
-  ///
-  /// When an applicable constraint violation occurs, the ABORT resolution algorithm aborts the current SQL statement with an SQLITE_CONSTRAINT error and backs out any changes made by the current SQL statement; but changes caused by prior SQL statements within the same transaction are preserved and the transaction remains active. This is the default behavior and the behavior specified by the SQL standard.
-  abort
-}
-
-extension _FromPublicConflictAlgorithm on ConflictAlgorithm {
-  sql.ConflictAlgorithm intoPrivate() => switch (this) {
-        ConflictAlgorithm.replace => sql.ConflictAlgorithm.replace,
-        ConflictAlgorithm.abort => sql.ConflictAlgorithm.abort,
-      };
-}
 
 typedef TableUpdate = (Table, Query, Map<String, Object?>);
 typedef TableInsert = (Table, Map<String, Object?>, ConflictAlgorithm);
@@ -49,7 +27,7 @@ class XqfliteSqlBuilder extends StatementBuilder {
 abstract interface class QueryExecutor {
   Future<int> update(Table table, Map<String, Object?> values, Query query);
   Future<int> delete(Table table, Query query);
-  Future<int> insert(Table table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort});
+  Future<KeyType> insert<KeyType>(Table<KeyType> table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort});
 
   Future<List<Map<String, Object?>>> query(Table table, Query query);
   Stream<List<Map<String, Object?>>> watchQuery(Table table, Query query);
@@ -162,6 +140,10 @@ class XqfliteDatabase implements QueryExecutor {
     await execute(table.toSql());
   }
 
+  DbTable<Key> getTable<Key>(String name) => tables[name] as DbTable<Key>;
+  DbTableWithConverter<Key, Value> getTableWithConverter<Key, Value>(String name, Converter<Value> converter) =>
+      (tables[name] as DbTable<Key>).withConverter(converter);
+
   /// Creates .bak version of this db
   Future<void> backup() async {
     clone("$path.bak");
@@ -198,15 +180,25 @@ class XqfliteDatabase implements QueryExecutor {
   Future<void> executeBuilder(StatementBuilder Function(StatementBuilder builder) builder) => execute(builder(StatementBuilder()).toSql());
 
   @override
-  Future<int> insert(Table table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
+  Future<KeyType> insert<KeyType>(Table<KeyType> table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
     try {
-      final newIndex = await _db!.insert(table.name, values, conflictAlgorithm: conflictAlgorithm.intoPrivate());
+      // final newKey = await _db!.insert(table.name,
+      //     table.columns.validateMapExcept(table.columns.preprocessMap(values)),
+      //     conflictAlgorithm: conflictAlgorithm.intoPrivate());
+
+      final insertionValues = table.columns.validateMapExcept(table.columns.preprocessMap(values));
+      final arguments = insertionValues.entries.toList();
+      final newKey = await _db!.rawQuery(
+        table.buildInsertStatement(columnNames: arguments.map((e) => e.key), onConflict: conflictAlgorithm),
+        arguments.map((e) => e.value).toList(),
+      );
 
       _tableChangeController.add(table);
       _insertController.add((table, values, conflictAlgorithm));
 
-      return newIndex;
-    } catch (e) {
+      return newKey.first.values.first as KeyType;
+    } catch (e, stack) {
+      print(stack);
       throw XqfliteGenericException(e);
     }
   }
