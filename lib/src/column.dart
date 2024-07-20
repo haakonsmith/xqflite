@@ -40,6 +40,7 @@ final class PrimaryKeyColumn extends Column implements IntoPrimaryKey {
   @override
   String toSql() => '$name INTEGER PRIMARY KEY';
 
+  @override
   SingleColumnKey toKey() => SingleColumnKey(this);
 }
 
@@ -49,6 +50,7 @@ final class PrimaryKeyCuidColumn extends Column implements IntoPrimaryKey {
   @override
   String toSql() => '$name TEXT PRIMARY KEY NOT NULL';
 
+  @override
   SingleColumnKey toKey() => SingleColumnKey(this);
 
   @override
@@ -63,6 +65,7 @@ final class PrimaryKeyUuidColumn extends Column implements IntoPrimaryKey {
   @override
   String toSql() => '$name TEXT PRIMARY KEY NOT NULL';
 
+  @override
   SingleColumnKey toKey() => SingleColumnKey(this);
 
   @override

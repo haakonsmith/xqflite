@@ -2,13 +2,12 @@ import 'package:test/test.dart';
 
 import 'package:xqflite/src/column.dart';
 import 'package:xqflite/src/exceptions.dart';
-import 'package:xqflite/src/table_builder.dart';
 import 'package:xqflite/xqflite.dart';
 
 import 'shared.dart';
 
 void main() {
-  group('unbatched db tests', () {
+  group('un-batched db tests', () {
     test('double inner join', () async {
       final column = Column.text('test_col', nullable: true);
       final column2 = Column.integer('test_col2');
@@ -159,7 +158,7 @@ void main() {
 
       await Database.instance.open(schema, dbPath: ':memory:');
 
-      final artist = Artist(artistName: 'Phill');
+      final artist = Artist(artistName: 'Phil');
       final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
 
       await artists.insert(artist);
@@ -168,7 +167,7 @@ void main() {
 
       await Database.instance.close();
 
-      expect(result, [Artist(artistName: 'Phill', artistId: 1)]);
+      expect(result, [Artist(artistName: 'Phil', artistId: 1)]);
     });
 
     test('update', () async {
@@ -181,7 +180,7 @@ void main() {
 
       await Database.instance.open(schema, dbPath: ':memory:');
 
-      final artist = Artist(artistName: 'Phill');
+      final artist = Artist(artistName: 'Phil');
       final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
 
       final artistId = await artists.insert(artist);
@@ -249,7 +248,7 @@ void main() {
 
       await Database.instance.open(schema, dbPath: ':memory:');
 
-      final artist = Artist(artistName: 'Phill');
+      final artist = Artist(artistName: 'Phil');
       final artists = Database.instance.tables['artists']!.withConverter<Artist>((toDb: (artist) => artist.toMap(), fromDb: Artist.fromMap));
 
       final artistId = await artists.insert(artist);

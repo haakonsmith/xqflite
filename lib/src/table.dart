@@ -155,7 +155,7 @@ $additionalSql
   }
 
   /// This builds an insert statement
-  /// It takes in the values as a list to assert the order. If not provided order cannot be guarenteed
+  /// It takes in the values as a list to assert the order. If not provided order cannot be guaranteed
   String buildInsertStatement({Iterable<String>? columnNames, ConflictAlgorithm onConflict = ConflictAlgorithm.abort}) {
     final buffer = StringBuffer('INSERT OR ${onConflict.name} INTO $tableName\n');
 

@@ -77,7 +77,7 @@ final class TableBuilder<Key> {
 
   /// This additional sql will get executed immediately after table creation,
   /// This is useful for triggers, keep in mind all triggers written like this should have "IF NOT EXISTS" as the will get executed regardless
-  /// Initalisation of this property is deffered so it will always have all columns within it.
+  /// Initialisation of this property is differed so it will always have all columns within it.
   TableBuilder<Key> additionalSql(String Function(Table table) sql) => this..sqlBuilders.add(sql);
 
   TableBuilder<Key> trigger(
