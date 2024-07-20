@@ -1,6 +1,5 @@
 import 'package:test/test.dart';
 
-import 'package:sqflite/sqflite.dart' as sql;
 import 'package:xqflite/src/column.dart';
 import 'package:xqflite/src/exceptions.dart';
 import 'package:xqflite/src/table_builder.dart';
@@ -84,13 +83,13 @@ void main() {
       final artists = Table.builder('artists') //
           .text('artist_name')
           .primaryKey('artist_id')
-          .build<int>();
+          .build();
 
       final albums = Table.builder('albums') //
           .text('album_name')
           .primaryKey('album_id')
           .reference('artist_id', artists)
-          .build<int>();
+          .build();
 
       final schema = Schema([albums, artists]);
 
@@ -375,7 +374,7 @@ END;
       final artistsTable = Table.builder('artists')
           .text('artist_name', unique: true)
           .primaryKey('artist_id') //
-          .build<int>();
+          .build();
 
       await Database.instance.open(Schema([artistsTable]), dbPath: ':memory:');
 
@@ -396,13 +395,13 @@ END;
       final masterTable = Table.builder('master_table')
           .integer('row_id') // Assume an artist has a popularity rating
           .primaryKey('master_table_id')
-          .build<String>(withoutRowId: true);
+          .build(withoutRowId: true);
 
       final artistsTable = Table.builder('artists')
           .text('artist_name')
           .integer('popularity') // Assume an artist has a popularity rating
           .primaryKeyCuid('artist_id')
-          .build<String>(withoutRowId: true);
+          .build(withoutRowId: true);
 
       final schema = Schema([artistsTable, masterTable]);
 
@@ -427,7 +426,7 @@ END;
           .text('artist_name')
           .integer('popularity', nullable: true) // Assume an artist has a popularity rating
           .primaryKeyCuid('artist_id')
-          .build<String>(withoutRowId: true);
+          .build(withoutRowId: true);
 
       final schema = Schema([artistsTable]);
 
@@ -452,7 +451,7 @@ END;
           .text('artist_name')
           .integer('popularity', nullable: true) // Assume an artist has a popularity rating
           .primaryKeyCuid('artist_id')
-          .build<String>(withoutRowId: true);
+          .build(withoutRowId: true);
 
       final schema = Schema([artistsTable]);
 

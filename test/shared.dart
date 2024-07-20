@@ -134,13 +134,13 @@ void testDb(
     final artistsTable = Table.builder('artists')
         .text('artist_name')
         .primaryKey('artist_id') //
-        .build<int>();
+        .build();
 
     final albumsTable = Table.builder('albums') //
         .text('album_name')
         .primaryKey('album_id')
         .reference('artist_id', artistsTable)
-        .build<int>();
+        .build();
 
     final schema = Schema([artistsTable, albumsTable], migrations: migrations);
 
