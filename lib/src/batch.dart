@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:sqflite/sqflite.dart' as sqflite;
+import 'package:xqflite/src/validation.dart';
 import 'package:xqflite/xqflite.dart';
 
 typedef BatchResult = ({
@@ -44,10 +45,12 @@ final class Batch {
   }
 
   void insert(Table table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
-    batch.insert(table.name, values);
+    final insertionValues = table.columns.validateMapExcept(table.columns.preprocessMap(values));
+
+    batch.insert(table.name, insertionValues);
 
     _tableChanges.add(table);
-    _inserts.add((table, values, conflictAlgorithm));
+    _inserts.add((table, insertionValues, conflictAlgorithm));
   }
 
   void delete(Table table, Query query) async {
