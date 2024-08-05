@@ -258,38 +258,10 @@ final class PartialQuery {
   String whereString() {
     final buffer = StringBuffer();
 
-    for (final (i, clause) in whereClauses.indexed) {
+    for (final clause in whereClauses) {
       buffer.writeln(clause.toSql());
-
-      // if (i != whereClauses.length - 1) {
-      //   buffer.write(clause.operator.sql);
-      // }
     }
 
-    // final string = buffer.toString();
-    // var accumulator = 0;
-
-    // for (var i = 0; i < string.length; i++) {
-    //   final char = string[i];
-
-    //   accumulator += switch (char) {
-    //     '(' => 1,
-    //     ')' => -1,
-    //     _ => 0,
-    //   };
-    // }
-
-    // print('accumulator $accumulator\n');
-
-    // while (accumulator > 0) {
-    //   buffer.write(')');
-    //   print('adding close');
-    //   accumulator--;
-    // }
-
-    // print('accumulator $accumulator\n');
-    // print(buffer.toString());
-    // print('test\n');
     return buffer.toString();
   }
 
