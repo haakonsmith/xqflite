@@ -11,7 +11,8 @@ typedef RawData = Map<String, Object?>;
 
 extension TryConverter<T> on Converter<T>? {
   Converter<T> getExcept<Q>(Table table) {
-    if (this == null) throw Exception('Missing converter on $table for type $Q.');
+    if (this == null)
+      throw Exception('Missing converter on $table for type $Q.');
 
     return this!;
   }
@@ -33,7 +34,8 @@ final class RowIdKey extends PrimaryKey {
   String toSqlList() => 'Rowid';
 
   @override
-  PartialQuery get query => PartialQuery([WhereClauseEquals('Rowid', EqualityOperator.equals)]);
+  PartialQuery get query =>
+      PartialQuery([WhereClauseEquals('Rowid', EqualityOperator.equals)]);
 }
 
 final class SingleColumnKey extends PrimaryKey {
@@ -45,7 +47,8 @@ final class SingleColumnKey extends PrimaryKey {
   String toSqlList() => column.name;
 
   @override
-  PartialQuery get query => PartialQuery([WhereClauseEquals(column.name, EqualityOperator.equals)]);
+  PartialQuery get query =>
+      PartialQuery([WhereClauseEquals(column.name, EqualityOperator.equals)]);
 }
 
 sealed class Join {
@@ -61,7 +64,8 @@ final class InnerJoin extends Join {
   const InnerJoin({required super.on, required super.joinee});
 
   @override
-  String toSql() => "INNER JOIN ${joinee.tableName} ON ${on.whereStringWithValues()}";
+  String toSql() =>
+      "INNER JOIN ${joinee.tableName} ON ${on.whereStringWithValues()}";
 }
 
 class Table<KeyType> {
@@ -80,16 +84,19 @@ class Table<KeyType> {
     this.groupProperties = const [],
     this.additionalSql = "",
     this.withoutRowId = false,
-  }) : primaryKey = columns.whereType<IntoPrimaryKey>().firstOrNull?.toKey() ?? RowIdKey() {
+  }) : primaryKey = columns.whereType<IntoPrimaryKey>().firstOrNull?.toKey() ??
+            RowIdKey() {
     switch (primaryKey) {
       case SingleColumnKey primaryKey:
-        assert(columns.contains(primaryKey.column), 'Single Primary key must be subset of columns');
+        assert(columns.contains(primaryKey.column),
+            'Single Primary key must be subset of columns');
         break;
       default:
     }
   }
 
-  factory Table.columns(String name, List<Column> columns, [List<Join> childJoins = const []]) {
+  factory Table.columns(String name, List<Column> columns,
+      [List<Join> childJoins = const []]) {
     return Table(columns: columns, name: name, childJoins: childJoins);
   }
 
@@ -99,11 +106,19 @@ class Table<KeyType> {
 
   bool get hasReferences => columns.any((column) => column is ReferenceColumn);
 
-  DbTable<KeyType> toDbTable(XqfliteDatabase database) => DbTable(database, this);
-  Table innerJoin<T extends Table>(T joinee, Query on) =>
-      Table(columns: columns, name: name, groupProperties: groupProperties, childJoins: [...childJoins, InnerJoin(on: on, joinee: joinee)]);
+  DbTable<KeyType> toDbTable(XqfliteDatabase database) =>
+      DbTable(database, this);
+  Table innerJoin<T extends Table>(T joinee, Query on) => Table(
+      columns: columns,
+      name: name,
+      groupProperties: groupProperties,
+      childJoins: [...childJoins, InnerJoin(on: on, joinee: joinee)]);
 
-  Table groupBy(List<String> groupProperties) => Table(columns: columns, name: name, groupProperties: groupProperties, childJoins: childJoins);
+  Table groupBy(List<String> groupProperties) => Table(
+      columns: columns,
+      name: name,
+      groupProperties: groupProperties,
+      childJoins: childJoins);
 
   String toSql() {
     return '''
@@ -156,15 +171,19 @@ $additionalSql
 
   /// This builds an insert statement
   /// It takes in the values as a list to assert the order. If not provided order cannot be guaranteed
-  String buildInsertStatement({Iterable<String>? columnNames, ConflictAlgorithm onConflict = ConflictAlgorithm.abort}) {
-    final buffer = StringBuffer('INSERT OR ${onConflict.name} INTO $tableName\n');
+  String buildInsertStatement(
+      {Iterable<String>? columnNames,
+      ConflictAlgorithm onConflict = ConflictAlgorithm.abort}) {
+    final buffer =
+        StringBuffer('INSERT OR ${onConflict.name} INTO $tableName\n');
 
     buffer.write("(");
     buffer.write((columnNames ?? columns.map((e) => e.name)).join(", "));
     buffer.writeln(")");
 
     buffer.write("VALUES (");
-    buffer.write((columnNames?.map((e) => "?") ?? columns.map((e) => "?")).join(", "));
+    buffer.write(
+        (columnNames?.map((e) => "?") ?? columns.map((e) => "?")).join(", "));
     buffer.writeln(")");
 
     buffer.write("RETURNING ${primaryKey.toSqlList()}");
@@ -180,8 +199,10 @@ $additionalSql
       final table = column.references;
 
       buffer.writeln(switch (table.primaryKey) {
-        SingleColumnKey primaryKey => 'INNER JOIN ${table.name} ON ${table.name}.${primaryKey.column.name} = ${parentTable.name}.${column.name}',
-        RowIdKey _ => 'INNER JOIN ${table.name} ON ${table.name}.Rowid = ${parentTable.name}.${column.name}',
+        SingleColumnKey primaryKey =>
+          'INNER JOIN ${table.name} ON ${table.name}.${primaryKey.column.name} = ${parentTable.name}.${column.name}',
+        RowIdKey _ =>
+          'INNER JOIN ${table.name} ON ${table.name}.Rowid = ${parentTable.name}.${column.name}',
       });
 
       if (table.hasReferences) buffer.writeln(buildInnerJoins(table));

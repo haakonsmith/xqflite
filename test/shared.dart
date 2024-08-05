@@ -12,11 +12,13 @@ final class Database extends XqfliteDatabase {
   //       toDb: (artist) => artist.toMap(),
   //       fromDb: Artist.fromMap,
   //     ));
-  DbTableWithConverter<int, Artist> get artists => getTableWithConverter('artists', (
+  DbTableWithConverter<int, Artist> get artists =>
+      getTableWithConverter('artists', (
         toDb: (artist) => artist.toMap(),
         fromDb: Artist.fromMap,
       ));
-  DbTableWithConverter<int, Album> get albums => tables['albums']!.withConverter<Album>((
+  DbTableWithConverter<int, Album> get albums =>
+      tables['albums']!.withConverter<Album>((
         toDb: (album) => album.toMap(),
         fromDb: Album.fromMap,
       )) as DbTableWithConverter<int, Album>;
@@ -105,7 +107,10 @@ class Album {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
-    return other is Album && other.albumName == albumName && other.albumId == albumId && other.artistId == artistId;
+    return other is Album &&
+        other.albumName == albumName &&
+        other.albumId == albumId &&
+        other.artistId == artistId;
   }
 
   @override
@@ -148,12 +153,12 @@ void testDb(
       schema,
       dbPath: ':memory:',
       onBeforeMigration: (db) async {
-        if (initialVersion != null) await db.execute('PRAGMA user_version = ${initialVersion + 1}');
+        if (initialVersion != null) {
+          await db.execute('PRAGMA user_version = ${initialVersion + 1}');
+        }
       },
     );
 
-    await runner(Database.instance);
-
-    await Database.instance.close();
+    await runner(Database.instance).whenComplete(Database.instance.close);
   });
 }
