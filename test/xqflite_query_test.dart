@@ -147,20 +147,20 @@ void main() {
       );
     });
 
-    testDb('distinct', (database) async {
-      await database.artists.insert(Artist(artistName: 'test'));
-      await database.artists.insert(Artist(artistName: 'test'));
-      await database.artists.insert(Artist(artistName: 'test2'));
+    // testDb('distinct', (database) async {
+    //   await database.artists.insert(Artist(artistName: 'test'));
+    //   await database.artists.insert(Artist(artistName: 'test'));
+    //   await database.artists.insert(Artist(artistName: 'test2'));
 
-      expect(
-        await database.artists.table
-            .query(Query.builder(['artist_name']).distinct().build()),
-        [
-          {'artist_name': 'test'},
-          {'artist_name': 'test2'}
-        ],
-      );
-    });
+    //   expect(
+    //     await database.artists.table
+    //         .query(Query.builder(['artist_name']).distinct().build()),
+    //     [
+    //       {'artist_name': 'test'},
+    //       {'artist_name': 'test2'}
+    //     ],
+    //   );
+    // });
 
     testDb('equals', (database) async {
       await database.artists.insert(Artist(artistName: 'test'));

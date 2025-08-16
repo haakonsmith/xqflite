@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:libsql_dart/libsql_dart.dart';
 import 'package:test/test.dart';
 import 'package:xqflite/xqflite.dart';
 
@@ -9,7 +10,7 @@ void main() {
   test('backup test', () async {
     final directory = Directory.current;
 
-    await Database.instance.open(Schema([]), dbPath: "${directory.path}/test.db");
+    await Database.instance.connect(LibsqlClient("${directory.path}/test.db"), Schema([]));
 
     await Database.instance.backup();
 

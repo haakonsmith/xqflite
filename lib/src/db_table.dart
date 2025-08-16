@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:xqflite/src/batch.dart';
+// import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/xqflite.dart';
 import 'package:xqflite/src/validation.dart';
 
@@ -40,11 +40,11 @@ class DbTable<KeyType> {
     return await database.update(table, values, query);
   }
 
-  Future<void> batch(void Function(BatchTable batch) executor) {
-    return database.batch((batch) {
-      executor(batch.withTable(table));
-    });
-  }
+  // Future<void> batch(void Function(BatchTable batch) executor) {
+  //   return database.batch((batch) {
+  //     executor(batch.withTable(table));
+  //   });
+  // }
 
   PartialQuery idQuery() => table.primaryKey.query;
   Query single(KeyType id) => table.primaryKey.query.withValues([id.toString()]);
@@ -101,11 +101,11 @@ final class DbTableWithConverter<KeyType, T> {
     return table.update(converter.toDb(value), query);
   }
 
-  Future<void> batch(void Function(BatchTableWithConverter<T> batch) executor) {
-    return table.batch((batch) {
-      executor(batch.withConverter(converter));
-    });
-  }
+  // Future<void> batch(void Function(BatchTableWithConverter<T> batch) executor) {
+  //   return table.batch((batch) {
+  //     executor(batch.withConverter(converter));
+  //   });
+  // }
 
   PartialQuery idQuery() => table.idQuery();
   Query single(KeyType id) => table.single(id);

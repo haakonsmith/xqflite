@@ -12,11 +12,12 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqflite: ^2.3.3
-  sqflite_common_ffi:
+  # sqflite: ^2.3.3
+  # sqflite_common_ffi:
   collection: ^1.18.0
   cuid2: ^3.1.0
   uuid: ^4.4.0
+  libsql_dart: ^0.8.0
 
 dev_dependencies:
   lints: ^3.0.0

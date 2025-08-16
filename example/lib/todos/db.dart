@@ -1,3 +1,4 @@
+import 'package:libsql_dart/libsql_dart.dart';
 import 'package:xqflite/xqflite.dart';
 
 class Todo {
@@ -47,7 +48,7 @@ extension TodoDatabase on XqfliteDatabase {
 
     final schema = Schema([todos]);
 
-    await open(schema, dbPath: ':memory:');
+    await connect(LibsqlClient.memory(), schema);
   }
 
   DbTableWithConverter<int, Todo> get todos => (tables['todo']! as DbTable<int>).withConverter(Todo.converter);

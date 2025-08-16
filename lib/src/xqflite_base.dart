@@ -3,10 +3,13 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:xqflite/src/batch.dart';
+import 'package:libsql_dart/libsql_dart.dart';
+// import 'package:xqflite/src/batch.dart';
 import 'package:xqflite/src/column.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;
+// import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sql;
 import 'package:xqflite/src/exceptions.dart';
+import 'package:xqflite/src/statements.dart';
+import 'package:xqflite/src/transaction.dart';
 import 'package:xqflite/src/validation.dart';
 import 'package:xqflite/xqflite.dart';
 
@@ -25,16 +28,14 @@ class XqfliteSqlBuilder extends StatementBuilder {
 }
 
 abstract interface class QueryExecutor {
+  Future<int> execute(String string);
+
   Future<int> update(Table table, Map<String, Object?> values, Query query);
   Future<int> delete(Table table, Query query);
-  Future<KeyType> insert<KeyType>(
-      Table<KeyType> table, Map<String, Object?> values,
-      {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort});
+  Future<KeyType> insert<KeyType>(Table<KeyType> table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort});
 
   Future<List<Map<String, Object?>>> query(Table table, Query query);
   Stream<List<Map<String, Object?>>> watchQuery(Table table, Query query);
-
-  Future<void> batch(void Function(Batch batch) executor);
 }
 
 class XqfliteDatabase implements QueryExecutor {
@@ -47,27 +48,22 @@ class XqfliteDatabase implements QueryExecutor {
 
   Future<void>? get future => _initialisationCompleter?.future;
 
-  sql.Database? _db;
+  LibsqlClient? client;
 
-  final StreamController<Table> _tableChangeController =
-      StreamController.broadcast();
-  final StreamController<TableDelete> _deleteController =
-      StreamController.broadcast();
-  final StreamController<TableInsert> _insertController =
-      StreamController.broadcast();
-  final StreamController<TableUpdate> _updateController =
-      StreamController.broadcast();
+  final StreamController<Table> _tableChangeController = StreamController.broadcast();
+  final StreamController<TableDelete> _deleteController = StreamController.broadcast();
+  final StreamController<TableInsert> _insertController = StreamController.broadcast();
+  final StreamController<TableUpdate> _updateController = StreamController.broadcast();
   late Schema schema;
   late Map<String, DbTable> tables;
 
-  String? get path => _db?.path;
+  String? get path => client?.url;
 
   Future<void> Function(XqfliteDatabase db)? onBeforeMigration;
 
-  Future<void> open(
+  Future<void> connect(
+    LibsqlClient client,
     Schema schema, {
-    String dbPath = 'default.db',
-    bool nukeDb = false,
     Future<void> Function(XqfliteDatabase db)? onBeforeMigration,
   }) async {
     if (initialised) return;
@@ -76,50 +72,32 @@ class XqfliteDatabase implements QueryExecutor {
       _initialisationCompleter = Completer();
 
       this.schema = schema;
-      this.schema.tables[metaTableName] = Table(
-          columns: [Column.integer('current_version')], name: metaTableName);
+      this.schema.tables[metaTableName] = Table(columns: [Column.integer('current_version')], name: metaTableName);
       this.onBeforeMigration = onBeforeMigration;
 
-      tables = schema.tables
-          .map((key, table) => MapEntry(key, table.toDbTable(this)));
+      tables = schema.tables.map((key, table) => MapEntry(key, table.toDbTable(this)));
 
-      await _open(
-        dbPath,
-        nukeDb: nukeDb,
-      ).whenComplete(() => _initialisationCompleter!.complete());
+      this.client = client;
+
+      await this.client!.connect();
+
+      for (final table in schema.tables.values) {
+        await this.client!.execute(table.toSql());
+      }
+
+      await onBeforeMigration?.call(this);
+      await _applyMigrations();
+
+      _initialisationCompleter?.complete();
     }
 
     await _initialisationCompleter!.future;
   }
 
-  Future<void> _open(
-    String dbPath, {
-    bool nukeDb = false,
-  }) async {
-    if (Platform.isWindows || Platform.isLinux) {
-      sql.sqfliteFfiInit();
-    }
-
-    sql.databaseFactoryOrNull = sql.databaseFactoryFfi;
-
-    if (nukeDb) await sql.deleteDatabase(dbPath);
-    _db = await sql.openDatabase(dbPath);
-
-    for (final table in schema.tables.values) {
-      await _db!.execute(table.toSql());
-    }
-
-    await onBeforeMigration?.call(this);
-    await _applyMigrations();
-  }
-
   Future<void> _applyMigrations() async {
-    final migrations = schema.migrations
-      ..sortBy<num>((element) => element.version);
+    final migrations = schema.migrations..sortBy<num>((element) => element.version);
     final latestMigration = migrations.lastOrNull;
-    var version = ((await rawQuery('PRAGMA user_version')).first['user_version']
-            as int? ??
-        0);
+    var version = ((await rawQuery('PRAGMA user_version')).first['user_version'] as int? ?? 0);
 
     // If version == 0, then we haven't run any migrations
     if (version == 0) {
@@ -141,7 +119,7 @@ class XqfliteDatabase implements QueryExecutor {
       }
     }
 
-    await execute('PRAGMA user_version = $version');
+    await execute('PRAGMA user_version = $version;');
   }
 
   Future<void> addTable(Table table) async {
@@ -152,8 +130,7 @@ class XqfliteDatabase implements QueryExecutor {
   }
 
   DbTable<Key> getTable<Key>(String name) => tables[name] as DbTable<Key>;
-  DbTableWithConverter<Key, Value> getTableWithConverter<Key, Value>(
-          String name, Converter<Value> converter) =>
+  DbTableWithConverter<Key, Value> getTableWithConverter<Key, Value>(String name, Converter<Value> converter) =>
       (tables[name] as DbTable<Key>).withConverter(converter);
 
   /// Creates .bak version of this db
@@ -171,45 +148,39 @@ class XqfliteDatabase implements QueryExecutor {
     }
   }
 
-  Future<void> close() {
-    if (_db == null) throw Exception('DB is not open');
+  Future<void> close() async {
+    if (client == null) throw Exception('DB is not open');
 
     _initialisationCompleter = null;
 
-    return _db!.close();
+    await client!.dispose();
   }
 
-  Future<void> deleteDatabase() {
-    if (_db?.isOpen == true) throw Exception('DB is open, please close first');
+  // Future<void> deleteDatabase() {
+  //   if (client == null) throw Exception('DB is open, please close first');
 
-    return sql.deleteDatabase(_db!.path);
-  }
-
-  Future<void> execute(String sql) async {
-    await _db!.execute(sql);
-  }
-
-  Future<void> executeBuilder(
-          StatementBuilder Function(StatementBuilder builder) builder) =>
-      execute(builder(StatementBuilder()).toSql());
+  //   return sql.deleteDatabase(client!.path);
+  // }
 
   @override
-  Future<KeyType> insert<KeyType>(
-      Table<KeyType> table, Map<String, Object?> values,
-      {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
+  Future<int> execute(String sql) async {
+    return await client!.execute(sql);
+  }
+
+  Future<void> executeBuilder(StatementBuilder Function(StatementBuilder builder) builder) => execute(builder(StatementBuilder()).toSql());
+
+  @override
+  Future<KeyType> insert<KeyType>(Table<KeyType> table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
     try {
       // final newKey = await _db!.insert(table.name,
       //     table.columns.validateMapExcept(table.columns.preprocessMap(values)),
       //     conflictAlgorithm: conflictAlgorithm.intoPrivate());
 
-      final insertionValues =
-          table.columns.validateMapExcept(table.columns.preprocessMap(values));
+      final insertionValues = table.columns.validateMapExcept(table.columns.preprocessMap(values));
       final arguments = insertionValues.entries.toList();
-      final newKey = await _db!.rawQuery(
-        table.buildInsertStatement(
-            columnNames: arguments.map((e) => e.key),
-            onConflict: conflictAlgorithm),
-        arguments.map((e) => e.value).toList(),
+      final newKey = await client!.query(
+        table.buildInsertStatement(columnNames: arguments.map((e) => e.key), onConflict: conflictAlgorithm),
+        positional: arguments.map((e) => e.value).toList(),
       );
 
       _tableChangeController.add(table);
@@ -225,8 +196,10 @@ class XqfliteDatabase implements QueryExecutor {
   /// Returns number of rows affected
   @override
   Future<int> delete(Table table, Query query) async {
-    final count = await _db!.delete(table.name,
-        where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+    final where = query.whereStringOrNull();
+    final whereClause = where ?? "";
+
+    final count = await client!.execute("""DELETE FROM ${table.name} WHERE $whereClause""", positional: query.valuesOrNull);
 
     _tableChangeController.add(table);
     _deleteController.add((table, query));
@@ -238,10 +211,9 @@ class XqfliteDatabase implements QueryExecutor {
   ///
   /// Update [table] with [values], a map from column names to new column values. null is a valid value that will be translated to NULL.
   @override
-  Future<int> update(
-      Table table, Map<String, Object?> values, Query query) async {
-    final count = await _db!.update(table.name, values,
-        where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+  Future<int> update(Table table, Map<String, Object?> values, Query query) async {
+    // final count = await client!.execute(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
+    final count = await client!.execute(buildUpdateStatement(table.name, values, query), positional: values.values.toList() + (query.valuesOrNull ?? []));
 
     _tableChangeController.add(table);
     _updateController.add((table, query, values));
@@ -250,35 +222,22 @@ class XqfliteDatabase implements QueryExecutor {
   }
 
   Future<List<Map<String, Object?>>> rawQuery(String query) async {
-    return await _db!.rawQuery(query);
+    return await client!.query(query);
   }
 
   @override
   Future<List<Map<String, Object?>>> query(Table table, Query query) async {
-    return await _db!.query(
-      table.tableIdQuery(),
-      where: query.whereStringOrNull(),
-      whereArgs: query.valuesOrNull,
-      orderBy: query.orderByString(),
-      distinct: query.distinct,
-      columns: query.columns,
-      limit: query.limit,
-    );
+    return await client!.query(buildQueryStatement(table, query), positional: query.valuesOrNull);
   }
 
   @override
-  Stream<List<Map<String, Object?>>> watchQuery(
-      Table table, Query query) async* {
+  Stream<List<Map<String, Object?>>> watchQuery(Table table, Query query) async* {
     yield await this.query(table, query);
 
-    await for (final _ in _tableChangeController.stream
-        .where((event) => event.name == table.name)) {
+    await for (final _ in _tableChangeController.stream.where((event) => event.name == table.name)) {
       yield await this.query(table, query);
     }
   }
-
-  @Deprecated("This is deprecated, use [tableChangeStream] instead")
-  Stream<Table> watchUpdates() => _tableChangeController.stream;
 
   /// Returns a stream of any table change
   Stream<Table> get tableChangeStream => _tableChangeController.stream;
@@ -287,20 +246,21 @@ class XqfliteDatabase implements QueryExecutor {
   Stream<TableDelete> get tableDeleteStream => _deleteController.stream;
 
   /// Provides a safe builder access for querying the database when you are unsure of the initialisation status
-  Stream<List<T>> when<T>(
-      Stream<List<T>> Function(XqfliteDatabase db) builder) async* {
+  Stream<List<T>> when<T>(Stream<List<T>> Function(XqfliteDatabase db) builder) async* {
     await future;
 
     yield* builder(this);
   }
 
-  sql.Batch getRawBatch() => _db!.batch();
+  // sql.Batch getRawBatch() => client!.batch();
 
-  @override
-  Future<List<Object?>> batch(void Function(Batch batch) executor) async {
-    final batch = Batch(this);
+  // @override
+  Future<void> transaction(Future<void> Function(Transaction batch) executor) async {
+    final txn = await client!.transaction();
 
-    executor(batch);
+    final batch = Transaction(DynTransactionWrapper(txn));
+
+    await executor(batch);
 
     final result = await batch.commit();
 
@@ -311,7 +271,5 @@ class XqfliteDatabase implements QueryExecutor {
     for (final update in result.tableUpdates) {
       _updateController.add(update);
     }
-
-    return result.rawResult;
   }
 }

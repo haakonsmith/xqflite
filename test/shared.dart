@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:libsql_dart/libsql_dart.dart';
 import 'package:test/test.dart';
 import 'package:xqflite/xqflite.dart';
 
@@ -149,9 +150,9 @@ void testDb(
 
     final schema = Schema([artistsTable, albumsTable], migrations: migrations);
 
-    await Database.instance.open(
+    await Database.instance.connect(
+      LibsqlClient.memory(),
       schema,
-      dbPath: ':memory:',
       onBeforeMigration: (db) async {
         if (initialVersion != null) {
           await db.execute('PRAGMA user_version = ${initialVersion + 1}');

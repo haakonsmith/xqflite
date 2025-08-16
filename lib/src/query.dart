@@ -342,7 +342,7 @@ final class QueryOperatorBuilder {
   QueryBuilder and() => builder..operators.add(BooleanOperator.and);
   QueryBuilder or() => builder..operators.add(BooleanOperator.or);
 
-  QueryOperatorBuilder distinct() => this..builder.isDistinct = true;
+  // QueryOperatorBuilder distinct() => this..builder.isDistinct = true;
   QueryOperatorBuilder limit(int limitCount) =>
       this..builder.limitCount = limitCount;
   QueryOperatorBuilder orderBy(String column,
@@ -359,11 +359,11 @@ final class QueryBuilder {
   final List<WhereClause> whereClauses;
   final List<OrderByClause> orderByClauses;
   final List<String> values;
-  bool isDistinct;
+  // bool isDistinct;
   int? limitCount;
 
   QueryBuilder({this.columns})
-      : isDistinct = false,
+      : 
         orderByClauses = [],
         whereClauses = [],
         operators = [],
@@ -379,7 +379,7 @@ final class QueryBuilder {
   }
 
   QueryBuilder limit(int limitCount) => this..limitCount = limitCount;
-  QueryBuilder distinct() => this..isDistinct = true;
+  // QueryBuilder distinct() => this..isDistinct = true;
 
   QueryOperatorBuilder like<T>(String column, T value) =>
       QueryOperatorBuilder(this
@@ -458,7 +458,7 @@ final class QueryBuilder {
       whereClauses,
       values,
       orderByClauses: orderByClauses,
-      distinct: isDistinct,
+      // distinct: isDistinct,
       columns: columns,
       limit: limitCount,
     );

@@ -1,3 +1,4 @@
+import 'package:libsql_dart/libsql_dart.dart';
 import 'package:test/test.dart';
 import 'package:xqflite/xqflite.dart';
 
@@ -32,17 +33,20 @@ void main() {
 
     test('migration with invalid migration path', () async {
       await expectLater(
-        () async => Database.instance.open(
+        () async => Database.instance.connect(
+          LibsqlClient.memory(),
           Schema([], migrations: [Migration(version: 1, migrator: (db, version) async {})]),
-          dbPath: ':memory:',
           onBeforeMigration: (db) => db.execute('PRAGMA user_version = 1'),
         ),
         throwsA(isA<MigrationMissingError>()),
       );
+
+      await Database.instance.close();
     });
 
     test('migration with initial version of 0', () async {
-      await Database.instance.open(
+      await Database.instance.connect(
+        LibsqlClient.memory(),
         Schema([], migrations: [
           Migration(
               version: 0,
@@ -50,10 +54,12 @@ void main() {
                 throw Exception("This shouldn't run!");
               })
         ]),
-        dbPath: ':memory:',
-        nukeDb: true,
+        // dbPath: ':memory:',
+        // nukeDb: true,
         onBeforeMigration: (db) => db.execute('PRAGMA foreign_keys = 1'),
       );
+
+      await Database.instance.close();
     });
   });
 }

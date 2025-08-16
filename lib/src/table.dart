@@ -11,8 +11,9 @@ typedef RawData = Map<String, Object?>;
 
 extension TryConverter<T> on Converter<T>? {
   Converter<T> getExcept<Q>(Table table) {
-    if (this == null)
+    if (this == null) {
       throw Exception('Missing converter on $table for type $Q.');
+    }
 
     return this!;
   }
@@ -187,6 +188,8 @@ $additionalSql
     buffer.writeln(")");
 
     buffer.write("RETURNING ${primaryKey.toSqlList()}");
+
+    print(buffer.toString());
 
     return buffer.toString();
   }
