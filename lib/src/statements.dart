@@ -28,6 +28,10 @@ String buildQueryStatement(Table table, Query query) {
 
   buffer.write("SELECT ");
 
+  if (query.distinct) {
+    buffer.write(" DISTINCT ");
+  }
+
   buffer.write(query.columns?.join(", ") ?? '*');
   buffer.write(" FROM ");
 
