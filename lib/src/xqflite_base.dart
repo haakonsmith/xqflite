@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:async_locks/async_locks.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:libsql_dart/libsql_dart.dart';
@@ -34,6 +35,11 @@ abstract interface class QueryExecutor {
   Future<int> delete(Table table, Query query);
   Future<KeyType> insert<KeyType>(Table<KeyType> table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort});
 
+  Future<List<Map<String, Object?>>> rawQuery(
+    String sql, {
+    Map<String, dynamic>? named,
+    List<dynamic>? positional,
+  });
   Future<List<Map<String, Object?>>> query(Table table, Query query);
   Stream<List<Map<String, Object?>>> watchQuery(Table table, Query query);
 }
@@ -47,6 +53,8 @@ class XqfliteDatabase implements QueryExecutor {
   bool get initialised => _initialisationCompleter?.isCompleted ?? false;
 
   Future<void>? get future => _initialisationCompleter?.future;
+
+  final Lock lock = Lock();
 
   LibsqlClient? client;
 
@@ -82,7 +90,7 @@ class XqfliteDatabase implements QueryExecutor {
       await this.client!.connect();
 
       for (final table in schema.tables.values) {
-        await this.client!.execute(table.toSql());
+        await execute(table.toSql());
       }
 
       await onBeforeMigration?.call(this);
@@ -163,8 +171,12 @@ class XqfliteDatabase implements QueryExecutor {
   // }
 
   @override
-  Future<int> execute(String sql) async {
-    return await client!.execute(sql);
+  Future<int> execute(
+    String sql, {
+    Map<String, dynamic>? named,
+    List<dynamic>? positional,
+  }) async {
+    return await lock.run(() async => await client!.execute(sql, named: named, positional: positional));
   }
 
   Future<void> executeBuilder(StatementBuilder Function(StatementBuilder builder) builder) => execute(builder(StatementBuilder()).toSql());
@@ -178,10 +190,10 @@ class XqfliteDatabase implements QueryExecutor {
 
       final insertionValues = table.columns.validateMapExcept(table.columns.preprocessMap(values));
       final arguments = insertionValues.entries.toList();
-      final newKey = await client!.query(
-        table.buildInsertStatement(columnNames: arguments.map((e) => e.key), onConflict: conflictAlgorithm),
-        positional: arguments.map((e) => e.value).toList(),
-      );
+      final newKey = await lock.run(() async => await client!.query(
+            table.buildInsertStatement(columnNames: arguments.map((e) => e.key), onConflict: conflictAlgorithm),
+            positional: arguments.map((e) => e.value).toList(),
+          ));
 
       _tableChangeController.add(table);
       _insertController.add((table, values, conflictAlgorithm));
@@ -199,7 +211,7 @@ class XqfliteDatabase implements QueryExecutor {
     final where = query.whereStringOrNull();
     final whereClause = where ?? "";
 
-    final count = await client!.execute("""DELETE FROM ${table.name} WHERE $whereClause""", positional: query.valuesOrNull);
+    final count = await lock.run(() async => await client!.execute("""DELETE FROM ${table.name} WHERE $whereClause""", positional: query.valuesOrNull));
 
     _tableChangeController.add(table);
     _deleteController.add((table, query));
@@ -213,7 +225,8 @@ class XqfliteDatabase implements QueryExecutor {
   @override
   Future<int> update(Table table, Map<String, Object?> values, Query query) async {
     // final count = await client!.execute(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
-    final count = await client!.execute(buildUpdateStatement(table.name, values, query), positional: values.values.toList() + (query.valuesOrNull ?? []));
+    final count = await lock.run(
+        () async => await client!.execute(buildUpdateStatement(table.name, values, query), positional: values.values.toList() + (query.valuesOrNull ?? [])));
 
     _tableChangeController.add(table);
     _updateController.add((table, query, values));
@@ -221,13 +234,17 @@ class XqfliteDatabase implements QueryExecutor {
     return count;
   }
 
-  Future<List<Map<String, Object?>>> rawQuery(String query) async {
-    return await client!.query(query);
+  Future<List<Map<String, Object?>>> rawQuery(
+    String query, {
+    Map<String, dynamic>? named,
+    List<dynamic>? positional,
+  }) async {
+    return await lock.run(() async => await client!.query(query, named: named, positional: positional));
   }
 
   @override
   Future<List<Map<String, Object?>>> query(Table table, Query query) async {
-    return await client!.query(buildQueryStatement(table, query), positional: query.valuesOrNull);
+    return await lock.run(() async => await client!.query(buildQueryStatement(table, query), positional: query.valuesOrNull));
   }
 
   @override
@@ -256,20 +273,25 @@ class XqfliteDatabase implements QueryExecutor {
 
   // @override
   Future<void> transaction(Future<void> Function(Transaction batch) executor) async {
-    final txn = await client!.transaction();
+    final txn = await lock.run(() async => await client!.transaction());
 
     final batch = Transaction(DynTransactionWrapper(txn));
 
-    await executor(batch);
+    try {
+      await executor(batch);
 
-    final result = await batch.commit();
+      final result = await batch.commit();
 
-    for (final update in result.changedTables) {
-      _tableChangeController.add(update);
-    }
+      for (final update in result.changedTables) {
+        _tableChangeController.add(update);
+      }
 
-    for (final update in result.tableUpdates) {
-      _updateController.add(update);
+      for (final update in result.tableUpdates) {
+        _updateController.add(update);
+      }
+    } catch (e) {
+      batch.rollback();
+      rethrow;
     }
   }
 }

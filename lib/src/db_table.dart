@@ -17,6 +17,15 @@ class DbTable<KeyType> {
     return await database.query(table, query);
   }
 
+  /// Be careful with this method as if you do not select the correct columns the converters will fail
+  Future<List<RawData>> rawQuery(
+    String sql, {
+    Map<String, dynamic>? named,
+    List<dynamic>? positional,
+  }) async {
+    return (await database.rawQuery(sql, named: named, positional: positional));
+  }
+
   Stream<List<RawData>> watch(Query query) {
     return database.watchQuery(table, query);
   }
@@ -81,6 +90,17 @@ final class DbTableWithConverter<KeyType, T> {
     }
 
     return (await table.query(query.withoutColumns())) //
+        .map((e) => fromDb(e))
+        .toList();
+  }
+
+  /// Be careful with this method as if you do not select the correct columns the converters will fail
+  Future<List<T>> rawQuery(
+    String sql, {
+    Map<String, dynamic>? named,
+    List<dynamic>? positional,
+  }) async {
+    return (await table.rawQuery(sql, named: named, positional: positional)) //
         .map((e) => fromDb(e))
         .toList();
   }

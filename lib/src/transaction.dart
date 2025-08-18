@@ -62,13 +62,17 @@ final class Transaction {
     );
   }
 
+  Future<void> rollback() async {
+    await txn.rollback();
+  }
+
   /// This executes raw sql on the batch
   ///
   /// This is useful for things like `CREATE TABLE` or `DROP TABLE`
   ///
   /// It does not update the table updates
-  Future<int> execute(String sql, [List<Object?>? arguments]) async {
-    return await txn.execute(sql, positional: arguments);
+  Future<int> execute(String sql, {List<Object?>? positional}) async {
+    return await txn.execute(sql, positional: positional);
   }
 
   Future<KeyType> insert<KeyType>(Table<KeyType> table, Map<String, Object?> values, {ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort}) async {
@@ -103,9 +107,7 @@ final class Transaction {
   }
 
   Future<int> update(Table table, Map<String, Object?> values, Query query) async {
-    print(buildUpdateStatement(table.name, values, query));
     final count = await txn.execute(buildUpdateStatement(table.name, values, query), positional: values.values.toList() + (query.valuesOrNull ?? []));
-    // txn.update(table.name, values, where: query.whereStringOrNull(), whereArgs: query.valuesOrNull);
 
     _tableChanges.add(table);
     _updates.add((table, query, values));
