@@ -5,7 +5,7 @@
 
 // import 'shared.dart';
 
-// void main() {
+void main() {
 //   group('batched db tests', () {
 //     test('double inner join', () async {
 //       final column = Column.text('test_col', nullable: true);
@@ -163,4 +163,4 @@
 //       ]);
 //     });
 //   });
-// }
+}

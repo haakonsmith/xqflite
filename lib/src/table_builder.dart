@@ -50,14 +50,21 @@ final class TableBuilder<Key> {
 
   TableBuilder<Key> text(String name, {bool nullable = false, bool unique = false}) =>
       this..columns.add(GenericColumn(name, DataType.text, nullable: nullable, unique: unique));
-  TableBuilder<Key> integer(String name, {bool nullable = false, bool unique = false}) =>
-      this..columns.add(GenericColumn(name, DataType.integer, nullable: nullable, unique: unique));
+  TableBuilder<Key> integer(String name, {bool nullable = false, bool unique = false, int? defaultValue}) =>
+      this..columns.add(IntegerColumn(name, nullable: nullable, unique: unique, defaultValue: defaultValue));
   TableBuilder<Key> bytes(String name, {bool nullable = false, bool unique = false}) =>
       this..columns.add(GenericColumn(name, DataType.bytes, nullable: nullable, unique: unique));
   TableBuilder<Key> real(String name, {bool nullable = false, bool unique = false}) =>
       this..columns.add(GenericColumn(name, DataType.real, nullable: nullable, unique: unique));
-  TableBuilder<Key> boolean(String name, {bool nullable = false, bool unique = false}) =>
-      this..columns.add(GenericColumn(name, DataType.boolean, nullable: nullable, unique: unique));
+  TableBuilder<Key> boolean(String name, {bool nullable = false, bool unique = false, bool? defaultValue}) => this
+    ..columns.add(IntegerColumn(name,
+        nullable: nullable,
+        unique: unique,
+        defaultValue: defaultValue != null
+            ? defaultValue
+                ? 1
+                : 0
+            : null));
 
   TableBuilder<Key> dateTime(String name, {bool nullable = false, bool unique = false}) =>
       this..columns.add(GenericColumn(name, DataType.dateTime, nullable: nullable, unique: unique));

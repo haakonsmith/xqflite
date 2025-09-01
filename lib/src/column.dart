@@ -9,20 +9,36 @@ sealed class Column {
 
   const Column(this.name);
 
-  static TextColumn text(String name, {bool nullable = false, String? defaultValue, bool unique = false}) =>
-      TextColumn(name, nullable: nullable, defaultValue: defaultValue, unique: unique);
-  static JsonColumn json(String name, {bool nullable = false}) => JsonColumn(name, nullable: nullable);
-  static GenericColumn integer(String name, {bool nullable = false, bool unique = false}) =>
+  static TextColumn text(String name,
+          {bool nullable = false, String? defaultValue, bool unique = false}) =>
+      TextColumn(name,
+          nullable: nullable, defaultValue: defaultValue, unique: unique);
+  static JsonColumn json(String name, {bool nullable = false}) =>
+      JsonColumn(name, nullable: nullable);
+  static GenericColumn integer(String name,
+          {bool nullable = false, bool unique = false}) =>
       GenericColumn(name, DataType.integer, nullable: nullable, unique: unique);
-  static GenericColumn date(String name, {bool nullable = false, bool unique = false}) =>
+  static GenericColumn date(String name,
+          {bool nullable = false, bool unique = false}) =>
       GenericColumn(name, DataType.date, nullable: nullable, unique: unique);
-  static GenericColumn dateTime(String name, {bool nullable = false, bool unique = false}) =>
-      GenericColumn(name, DataType.dateTime, nullable: nullable, unique: unique);
+  static GenericColumn dateTime(String name,
+          {bool nullable = false, bool unique = false}) =>
+      GenericColumn(name, DataType.dateTime,
+          nullable: nullable, unique: unique);
   static PrimaryKeyColumn primaryKey(String name) => PrimaryKeyColumn(name);
-  static PrimaryKeyCuidColumn primaryKeyCuid(String name) => PrimaryKeyCuidColumn(name);
-  static PrimaryKeyUuidColumn primaryKeyUuid(String name) => PrimaryKeyUuidColumn(name);
-  static ReferenceColumn reference(String name, Table table, {bool nullable = false, CascadeOperation? onUpdate, CascadeOperation? onDelete}) =>
-      ReferenceColumn(name, references: table, nullable: nullable, onDelete: onDelete, onUpdate: onUpdate);
+  static PrimaryKeyCuidColumn primaryKeyCuid(String name) =>
+      PrimaryKeyCuidColumn(name);
+  static PrimaryKeyUuidColumn primaryKeyUuid(String name) =>
+      PrimaryKeyUuidColumn(name);
+  static ReferenceColumn reference(String name, Table table,
+          {bool nullable = false,
+          CascadeOperation? onUpdate,
+          CascadeOperation? onDelete}) =>
+      ReferenceColumn(name,
+          references: table,
+          nullable: nullable,
+          onDelete: onDelete,
+          onUpdate: onUpdate);
 
   String toSql();
 
@@ -79,10 +95,12 @@ final class GenericColumn extends Column {
   final bool nullable;
   final bool unique;
 
-  const GenericColumn(super.name, this.dataType, {this.nullable = false, this.unique = false});
+  const GenericColumn(super.name, this.dataType,
+      {this.nullable = false, this.unique = false});
 
   @override
-  String toSql() => '$name ${dataType.name.toUpperCase()}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
+  String toSql() =>
+      '$name ${dataType.name.toUpperCase()}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
 }
 
 final class TextColumn extends Column {
@@ -90,10 +108,25 @@ final class TextColumn extends Column {
   final bool unique;
   final String? defaultValue;
 
-  const TextColumn(super.name, {this.nullable = false, this.defaultValue, this.unique = false});
+  const TextColumn(super.name,
+      {this.nullable = false, this.defaultValue, this.unique = false});
 
   @override
-  String toSql() => '$name TEXT${defaultValue == null ? '' : ' DEFAULT "$defaultValue"'}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
+  String toSql() =>
+      '$name TEXT${defaultValue == null ? '' : ' DEFAULT "$defaultValue"'}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
+}
+
+final class IntegerColumn extends Column {
+  final bool nullable;
+  final bool unique;
+  final int? defaultValue;
+
+  const IntegerColumn(super.name,
+      {this.nullable = false, this.defaultValue, this.unique = false});
+
+  @override
+  String toSql() =>
+      '$name INTEGER${defaultValue == null ? '' : ' DEFAULT $defaultValue'}${nullable ? '' : ' NOT NULL'}${unique ? ' UNIQUE' : ''}';
 }
 
 /// https://www.sqlite.org/foreignkeys.html
@@ -115,11 +148,17 @@ final class ReferenceColumn extends Column {
   final CascadeOperation? onUpdate;
   final DataAffinity type;
 
-  const ReferenceColumn(super.name, {required this.references, this.nullable = false, this.onUpdate, this.onDelete, this.type = DataAffinity.integer});
+  const ReferenceColumn(super.name,
+      {required this.references,
+      this.nullable = false,
+      this.onUpdate,
+      this.onDelete,
+      this.type = DataAffinity.integer});
 
   @override
   String toSql() {
-    final buffer = StringBuffer('$name ${type.name} REFERENCES ${references.name} (${references.primaryKey.toSqlList()})');
+    final buffer = StringBuffer(
+        '$name ${type.name} REFERENCES ${references.name} (${references.primaryKey.toSqlList()})');
 
     if (onDelete != null) {
       buffer.write(" ON DELETE ");

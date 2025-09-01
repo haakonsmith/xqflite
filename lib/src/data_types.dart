@@ -1,9 +1,21 @@
-sealed class DataAffinityType {}
+sealed class DataAffinityType<Internal> {
+  String get name;
+}
 
-class TextAffinityType extends DataAffinityType {}
-class NumericAffinityType extends DataAffinityType  {}
-class IntegerAffinityType extends DataAffinityType {}
-class RealAffinityType extends DataAffinityType  {}
+class TextAffinityType extends DataAffinityType<String> {
+  @override
+  String get name => "TEXT";
+}
+
+class IntegerAffinityType extends DataAffinityType<int> {
+  @override
+  String get name => "INTEGER";
+}
+
+class RealAffinityType extends DataAffinityType<double> {
+  @override
+  String get name => "REAL";
+}
 
 enum DataAffinity { text, numeric, integer, real, blob, json }
 

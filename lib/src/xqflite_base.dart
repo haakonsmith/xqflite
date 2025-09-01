@@ -200,7 +200,6 @@ class XqfliteDatabase implements QueryExecutor {
 
       return newKey.first.values.first as KeyType;
     } catch (e, stack) {
-      print(stack);
       throw XqfliteGenericException(e);
     }
   }
